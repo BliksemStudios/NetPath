@@ -65,7 +65,10 @@ final class LauncherViewModel {
 
         connectionState = .connecting(server: path.server)
 
-        // Step 1: Try with stored credentials if available
+        // Step 1: Check for existing mount (instant, no auth needed)
+        // This is handled inside XPCClient.mount already
+
+        // Step 2: Try with stored credentials if available
         if let credential = try? KeychainService.shared.getCredential(for: path.server) {
             let username = conversionService.buildCredentialString(
                 domain: credential.domain, username: credential.username)
@@ -76,19 +79,12 @@ final class LauncherViewModel {
                 connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
                 return
             } catch {
-                print("[NetPath] Stored credentials failed, trying Kerberos...")
+                print("[NetPath] Stored credentials failed")
             }
         }
 
-        // Step 2: Try Kerberos (no credentials — uses AD login)
-        do {
-            let result = try await xpcClient.mount(
-                path: path, username: nil, password: nil)
-            recordVisit(path: path)
-            connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
-        } catch {
-            connectionState = .needsCredentials(server: path.server)
-        }
+        // Step 3: No stored credentials — prompt the user
+        connectionState = .needsCredentials(server: path.server)
     }
 
     func connectWithCredentials(domain: String, username: String,

@@ -75,12 +75,9 @@ final class XPCClient: ObservableObject {
                 mountOptions[kNetFSMountFlagsKey] = Int32(0x00100000)
 
                 let openOptions = NSMutableDictionary()
-                // NoUI when we have explicit credentials, AllowUI for Kerberos
-                if username != nil {
-                    openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
-                } else {
-                    openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
-                }
+                // Always NoUI — never trigger the macOS system auth dialog.
+                // Auth is handled by our in-app credential form.
+                openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
 
                 var mountpoints: Unmanaged<CFArray>?
 
