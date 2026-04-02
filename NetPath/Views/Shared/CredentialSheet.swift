@@ -10,6 +10,9 @@ struct CredentialSheet: View {
     @State private var password = ""
     @State private var saveToKeychain = true
     @State private var isSubmitting = false
+    @FocusState private var focusedField: Field?
+
+    enum Field { case domain, username, password }
 
     init(server: String,
          onSubmit: @escaping (String, String, String, Bool) async -> Void,
@@ -21,44 +24,87 @@ struct CredentialSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            VStack(spacing: 4) {
+        VStack(spacing: 12) {
+            // Header
+            HStack(spacing: 8) {
                 Image(systemName: "lock.shield")
-                    .font(.system(size: 32))
+                    .font(.system(size: 16))
                     .foregroundStyle(Design.Colors.accent)
                 Text("Connect to \(server)")
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .medium))
+                Spacer()
+            }
+            .padding(.bottom, 4)
+
+            // Fields
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Domain")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 70, alignment: .trailing)
+                    TextField("GGN", text: $domain)
+                        .textFieldStyle(.roundedBorder)
+                        .font(Design.Fonts.pathMono)
+                        .focused($focusedField, equals: .domain)
+                }
+
+                HStack {
+                    Text("Username")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 70, alignment: .trailing)
+                    TextField("username", text: $username)
+                        .textFieldStyle(.roundedBorder)
+                        .font(Design.Fonts.pathMono)
+                        .focused($focusedField, equals: .username)
+                }
+
+                HStack {
+                    Text("Password")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 70, alignment: .trailing)
+                    SecureField("", text: $password)
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedField, equals: .password)
+                        .onSubmit { submit() }
+                }
             }
 
-            Form {
-                TextField("Domain", text: $domain)
-                    .textFieldStyle(.roundedBorder)
-                TextField("Username", text: $username)
-                    .textFieldStyle(.roundedBorder)
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                Toggle("Save to Keychain", isOn: $saveToKeychain)
-            }
-            .formStyle(.grouped)
-
+            // Options + buttons
             HStack {
-                Button("Cancel") { onCancel() }
-                    .keyboardShortcut(.cancelAction)
+                Toggle("Save to Keychain", isOn: $saveToKeychain)
+                    .font(.system(size: 12))
+                    .toggleStyle(.checkbox)
 
                 Spacer()
 
-                Button("Connect") {
-                    isSubmitting = true
-                    Task {
-                        await onSubmit(domain, username, password, saveToKeychain)
-                        isSubmitting = false
-                    }
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(username.isEmpty || password.isEmpty || isSubmitting)
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
+
+                Button("Connect") { submit() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(username.isEmpty || password.isEmpty || isSubmitting)
+                    .buttonStyle(.borderedProminent)
+                    .tint(Design.Colors.accent)
+            }
+            .padding(.top, 4)
+        }
+        .padding(Design.Launcher.inputPadding)
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                focusedField = .username
             }
         }
-        .padding(20)
-        .frame(width: 360)
+    }
+
+    private func submit() {
+        guard !username.isEmpty, !password.isEmpty, !isSubmitting else { return }
+        isSubmitting = true
+        Task {
+            await onSubmit(domain, username, password, saveToKeychain)
+            isSubmitting = false
+        }
     }
 }
