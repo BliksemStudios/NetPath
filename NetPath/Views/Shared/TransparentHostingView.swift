@@ -1,11 +1,14 @@
 import AppKit
 import SwiftUI
 
-/// NSHostingView subclass that applies a CAShapeLayer mask on every layout pass.
-/// This clips the hosting view's opaque background at rounded corners.
+/// NSHostingView subclass that applies a CAShapeLayer mask on every layout pass
+/// and keeps an associated shadow layer sized correctly.
 final class MaskedHostingView<Content: View>: NSHostingView<Content> {
     private let cornerRadius: CGFloat
     private let maskLayer = CAShapeLayer()
+
+    /// Optional shadow layer to resize on layout (set by the panel setup code)
+    var shadowLayer: CALayer?
 
     init(rootView: Content, cornerRadius: CGFloat) {
         self.cornerRadius = cornerRadius
@@ -28,12 +31,20 @@ final class MaskedHostingView<Content: View>: NSHostingView<Content> {
 
     override func layout() {
         super.layout()
-        maskLayer.path = CGPath(
-            roundedRect: bounds,
-            cornerWidth: cornerRadius,
-            cornerHeight: cornerRadius,
-            transform: nil
-        )
-        maskLayer.frame = bounds
+        let b = bounds
+        maskLayer.path = CGPath(roundedRect: b,
+                                cornerWidth: cornerRadius,
+                                cornerHeight: cornerRadius,
+                                transform: nil)
+        maskLayer.frame = b
+
+        // Keep shadow layer matched to the parent effect view's bounds
+        if let shadow = shadowLayer, let parentBounds = superview?.bounds {
+            shadow.frame = parentBounds
+            shadow.shadowPath = CGPath(roundedRect: parentBounds,
+                                        cornerWidth: cornerRadius,
+                                        cornerHeight: cornerRadius,
+                                        transform: nil)
+        }
     }
 }

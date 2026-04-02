@@ -71,8 +71,8 @@ final class XPCClient: ObservableObject {
                 let mountOptions = NSMutableDictionary()
                 mountOptions[kNetFSSoftMountKey] = true
                 mountOptions[kNetFSAllowSubMountsKey] = true
-                // MNT_DONTBROWSE prevents Finder from opening a window
-                mountOptions[kNetFSMountFlagsKey] = Int32(0x00100000)
+                // Don't set MNT_DONTBROWSE — DFS shares need macOS to handle
+                // submount referrals, which only works without nobrowse.
 
                 let openOptions = NSMutableDictionary()
                 // Always NoUI — never trigger the macOS system auth dialog.
