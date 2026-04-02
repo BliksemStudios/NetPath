@@ -2,8 +2,8 @@ import Foundation
 import NetFS
 
 struct MountResult {
-    let mountPoint: String    // e.g. "/Volumes/NetPath_dfs"
-    let subPath: [String]     // e.g. ["ict", "dev"] — subdirectories to navigate into
+    let mountPoint: String
+    let subPath: [String]
 }
 
 @MainActor
@@ -14,21 +14,59 @@ final class XPCClient: ObservableObject {
 
     private init() {}
 
-    /// Mount a UNC path. Only mounts the share root (server/share),
-    /// returns the mount point + any remaining subdirectory components.
     func mount(path: UNCPath, username: String?, password: String?) async throws -> MountResult {
         guard let share = path.share else {
             throw XPCError.mountFailed(status: Int32(EINVAL))
         }
 
-        // Build the share-root SMB URL (no subdirectories)
-        let shareURL = "smb://\(path.server)/\(share)"
-        let subPath = path.components  // everything after the share
+        let subPath = path.components
 
+        // First: check if already mounted
+        if let existingMount = findExistingMount(server: path.server, share: share) {
+            print("[NetPath] Reusing existing mount at \(existingMount)")
+            return MountResult(mountPoint: existingMount, subPath: subPath)
+        }
+
+        // Mount the share — try with system UI allowed so macOS handles Kerberos/AD
+        let shareURL = "smb://\(path.server)/\(share)"
         let mountPoint = try await performMount(
             url: shareURL, username: username, password: password)
 
         return MountResult(mountPoint: mountPoint, subPath: subPath)
+    }
+
+    /// Check if the share is already mounted (by Finder or previous NetPath mount)
+    private func findExistingMount(server: String, share: String) -> String? {
+        // Check /Volumes for existing mount matching this share
+        let fm = FileManager.default
+        guard let volumes = fm.mountedVolumeURLs(
+            includingResourceValuesForKeys: [.volumeURLForRemountingKey],
+            options: []) else { return nil }
+
+        for volume in volumes {
+            // Check the remount URL to match server/share
+            if let values = try? volume.resourceValues(forKeys: [.volumeURLForRemountingKey]),
+               let remountURL = values.volumeURLForRemounting {
+                let remountStr = remountURL.absoluteString.lowercased()
+                if remountStr.contains(server.lowercased()) &&
+                   remountStr.contains("/\(share.lowercased())") {
+                    return volume.path
+                }
+            }
+        }
+
+        // Fallback: check by path name
+        let candidates = [
+            "/Volumes/\(share)",
+            "/Volumes/NetPath_\(share)",
+        ]
+        for candidate in candidates {
+            if fm.fileExists(atPath: candidate) {
+                return candidate
+            }
+        }
+
+        return nil
     }
 
     private func performMount(url: String, username: String?, password: String?) async throws -> String {
@@ -51,10 +89,8 @@ final class XPCClient: ObservableObject {
                 mountOptions[kNetFSAllowSubMountsKey] = true
 
                 let openOptions = NSMutableDictionary()
-                if username == nil && password == nil {
-                    openOptions[kNetFSUseGuestKey] = true
-                }
-                openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
+                // Allow system UI for auth — handles Kerberos, AD, NTLM automatically
+                openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
 
                 var mountpoints: Unmanaged<CFArray>?
 
