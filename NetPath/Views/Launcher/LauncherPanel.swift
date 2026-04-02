@@ -2,6 +2,9 @@ import AppKit
 import SwiftUI
 
 final class LauncherPanel: NSPanel {
+    /// Set to true when a sheet or credential prompt is active — prevents auto-dismiss
+    var preventDismiss = false
+
     init() {
         super.init(
             contentRect: NSRect(x: 0, y: 0,
@@ -34,7 +37,9 @@ final class LauncherPanel: NSPanel {
 
     override func resignKey() {
         super.resignKey()
-        close()
+        if !preventDismiss {
+            close()
+        }
     }
 
     override func cancelOperation(_ sender: Any?) {

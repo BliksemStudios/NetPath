@@ -42,8 +42,9 @@ struct LauncherView: View {
                 }
                 .padding(Design.Launcher.inputPadding)
 
-                // Converted preview / status
-                if let preview = viewModel.convertedPreview {
+                // Converted preview
+                if let preview = viewModel.convertedPreview,
+                   !viewModel.connectionState.isConnecting {
                     HStack {
                         Text("→ \(preview)")
                             .font(Design.Fonts.pathMonoSmall)
@@ -55,6 +56,7 @@ struct LauncherView: View {
                     .padding(.bottom, 8)
                 }
 
+                // Error message
                 if let error = viewModel.connectionState.errorMessage {
                     HStack {
                         Image(systemName: "exclamationmark.triangle")
@@ -72,6 +74,7 @@ struct LauncherView: View {
                     .padding(.bottom, 8)
                 }
 
+                // Connecting status
                 if viewModel.connectionState.isConnecting {
                     HStack {
                         if case .connecting(let server) = viewModel.connectionState {
@@ -102,6 +105,31 @@ struct LauncherView: View {
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)
                 }
+
+                // Inline credential form (shown instead of a sheet to avoid panel dismiss issues)
+                if showCredentialSheet,
+                   case .needsCredentials(let server) = viewModel.connectionState {
+                    Divider().padding(.horizontal, 8).opacity(0.3)
+
+                    CredentialSheet(
+                        server: server,
+                        onSubmit: { domain, user, pass, save in
+                            showCredentialSheet = false
+                            setPanelPreventDismiss(false)
+                            await viewModel.connectWithCredentials(
+                                domain: domain, username: user,
+                                password: pass, saveToKeychain: save)
+                            if viewModel.connectionState.isConnected {
+                                handleConnected()
+                            }
+                        },
+                        onCancel: {
+                            showCredentialSheet = false
+                            setPanelPreventDismiss(false)
+                            viewModel.connectionState = .idle
+                        }
+                    )
+                }
             }
         }
         .background(.ultraThinMaterial)
@@ -116,29 +144,10 @@ struct LauncherView: View {
                 isInputFocused = true
             }
         }
-        .sheet(isPresented: $showCredentialSheet) {
-            if let viewModel, case .needsCredentials(let server) = viewModel.connectionState {
-                CredentialSheet(
-                    server: server,
-                    onSubmit: { domain, user, pass, save in
-                        await viewModel.connectWithCredentials(
-                            domain: domain, username: user,
-                            password: pass, saveToKeychain: save)
-                        if viewModel.connectionState.isConnected {
-                            showCredentialSheet = false
-                            handleConnected()
-                        }
-                    },
-                    onCancel: {
-                        showCredentialSheet = false
-                        viewModel.connectionState = .idle
-                    }
-                )
-            }
-        }
         .onChange(of: viewModel?.connectionState) { _, newState in
             if case .needsCredentials = newState {
                 showCredentialSheet = true
+                setPanelPreventDismiss(true)
             } else if case .connected = newState {
                 handleConnected()
             }
@@ -159,6 +168,15 @@ struct LauncherView: View {
               let path = PathConversionService().parse(viewModel.inputText) else { return }
         onBrowse?(mountPoint, path)
         viewModel.reset()
+        showCredentialSheet = false
+        setPanelPreventDismiss(false)
         onDismiss?()
+    }
+
+    /// Tell the panel not to dismiss when it loses key status (e.g. during credential entry)
+    private func setPanelPreventDismiss(_ prevent: Bool) {
+        if let panel = NSApp.windows.first(where: { $0 is LauncherPanel }) as? LauncherPanel {
+            panel.preventDismiss = prevent
+        }
     }
 }
