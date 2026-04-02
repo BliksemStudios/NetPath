@@ -38,16 +38,16 @@ final class XPCClient: ObservableObject {
         return conn
     }
 
-    private func getProxy() -> NetPathHelperProtocol? {
-        let conn = getConnection()
-        return conn.remoteObjectProxyWithErrorHandler { error in
+    nonisolated private func getProxy(from conn: NSXPCConnection) -> NetPathHelperProtocol? {
+        conn.remoteObjectProxyWithErrorHandler { error in
             print("XPC proxy error: \(error)")
         } as? NetPathHelperProtocol
     }
 
     func mount(url: String, username: String?, password: String?) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            guard let proxy = getProxy() else {
+        let conn = getConnection()
+        return try await withCheckedThrowingContinuation { continuation in
+            guard let proxy = getProxy(from: conn) else {
                 continuation.resume(throwing: XPCError.connectionFailed)
                 return
             }
@@ -62,8 +62,9 @@ final class XPCClient: ObservableObject {
     }
 
     func unmount(path: String) async -> Bool {
-        await withCheckedContinuation { continuation in
-            guard let proxy = getProxy() else {
+        let conn = getConnection()
+        return await withCheckedContinuation { continuation in
+            guard let proxy = getProxy(from: conn) else {
                 continuation.resume(returning: false)
                 return
             }
@@ -74,8 +75,9 @@ final class XPCClient: ObservableObject {
     }
 
     func listMountedShares() async -> [String] {
-        await withCheckedContinuation { continuation in
-            guard let proxy = getProxy() else {
+        let conn = getConnection()
+        return await withCheckedContinuation { continuation in
+            guard let proxy = getProxy(from: conn) else {
                 continuation.resume(returning: [])
                 return
             }

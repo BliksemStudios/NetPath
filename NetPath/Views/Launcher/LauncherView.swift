@@ -5,6 +5,7 @@ struct LauncherView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: LauncherViewModel?
     @State private var showCredentialSheet = false
+    @FocusState private var isInputFocused: Bool
 
     var onBrowse: ((String, UNCPath) -> Void)?
     var onDismiss: (() -> Void)?
@@ -24,6 +25,7 @@ struct LauncherView: View {
                               ))
                         .font(Design.Fonts.pathMonoLarge)
                         .textFieldStyle(.plain)
+                        .focused($isInputFocused)
                         .onSubmit { handleSubmit() }
 
                     if viewModel.connectionState.isConnecting {
@@ -109,6 +111,9 @@ struct LauncherView: View {
         .onAppear {
             if viewModel == nil {
                 viewModel = LauncherViewModel(modelContext: modelContext)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                isInputFocused = true
             }
         }
         .sheet(isPresented: $showCredentialSheet) {
