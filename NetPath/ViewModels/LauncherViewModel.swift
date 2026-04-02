@@ -79,6 +79,7 @@ final class LauncherViewModel {
         } catch let error as XPCError where error.isAuthError {
             connectionState = .needsCredentials(server: path.server)
         } catch {
+            xpcClient.resetConnection()
             connectionState = .error(message: error.localizedDescription)
         }
     }

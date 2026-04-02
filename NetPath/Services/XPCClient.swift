@@ -6,7 +6,8 @@ final class XPCClient: ObservableObject {
 
     @Published private(set) var isHelperConnected = false
 
-    private var connection: NSXPCConnection?
+    // NSXPCConnection is thread-safe but not Sendable; mark as such
+    nonisolated(unsafe) private var connection: NSXPCConnection?
 
     private init() {}
 
@@ -38,24 +39,39 @@ final class XPCClient: ObservableObject {
         return conn
     }
 
-    nonisolated private func getProxy(from conn: NSXPCConnection) -> NetPathHelperProtocol? {
-        conn.remoteObjectProxyWithErrorHandler { error in
-            print("XPC proxy error: \(error)")
-        } as? NetPathHelperProtocol
-    }
-
     func mount(url: String, username: String?, password: String?) async throws -> String {
         let conn = getConnection()
-        return try await withCheckedThrowingContinuation { continuation in
-            guard let proxy = getProxy(from: conn) else {
-                continuation.resume(throwing: XPCError.connectionFailed)
+
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+            let resumed = Resumed()
+
+            // Set a timeout — if nothing responds in 15s, fail
+            DispatchQueue.global().asyncAfter(deadline: .now() + 15) {
+                if resumed.tryResume() {
+                    continuation.resume(throwing: XPCError.connectionFailed)
+                }
+            }
+
+            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
+                if resumed.tryResume() {
+                    continuation.resume(throwing: XPCError.connectionFailed)
+                }
+            } as? NetPathHelperProtocol
+
+            guard let proxy else {
+                if resumed.tryResume() {
+                    continuation.resume(throwing: XPCError.connectionFailed)
+                }
                 return
             }
+
             proxy.mount(url: url, username: username, password: password) { mountPoint, status in
-                if let mountPoint, status == 0 {
-                    continuation.resume(returning: mountPoint)
-                } else {
-                    continuation.resume(throwing: XPCError.mountFailed(status: status))
+                if resumed.tryResume() {
+                    if let mountPoint, status == 0 {
+                        continuation.resume(returning: mountPoint)
+                    } else {
+                        continuation.resume(throwing: XPCError.mountFailed(status: status))
+                    }
                 }
             }
         }
@@ -64,12 +80,31 @@ final class XPCClient: ObservableObject {
     func unmount(path: String) async -> Bool {
         let conn = getConnection()
         return await withCheckedContinuation { continuation in
-            guard let proxy = getProxy(from: conn) else {
-                continuation.resume(returning: false)
+            let resumed = Resumed()
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + 10) {
+                if resumed.tryResume() {
+                    continuation.resume(returning: false)
+                }
+            }
+
+            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
+                if resumed.tryResume() {
+                    continuation.resume(returning: false)
+                }
+            } as? NetPathHelperProtocol
+
+            guard let proxy else {
+                if resumed.tryResume() {
+                    continuation.resume(returning: false)
+                }
                 return
             }
+
             proxy.unmount(path: path) { success in
-                continuation.resume(returning: success)
+                if resumed.tryResume() {
+                    continuation.resume(returning: success)
+                }
             }
         }
     }
@@ -77,14 +112,53 @@ final class XPCClient: ObservableObject {
     func listMountedShares() async -> [String] {
         let conn = getConnection()
         return await withCheckedContinuation { continuation in
-            guard let proxy = getProxy(from: conn) else {
-                continuation.resume(returning: [])
+            let resumed = Resumed()
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
+                if resumed.tryResume() {
+                    continuation.resume(returning: [])
+                }
+            }
+
+            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
+                if resumed.tryResume() {
+                    continuation.resume(returning: [])
+                }
+            } as? NetPathHelperProtocol
+
+            guard let proxy else {
+                if resumed.tryResume() {
+                    continuation.resume(returning: [])
+                }
                 return
             }
+
             proxy.listMountedShares { shares in
-                continuation.resume(returning: shares)
+                if resumed.tryResume() {
+                    continuation.resume(returning: shares)
+                }
             }
         }
+    }
+
+    func resetConnection() {
+        connection?.invalidate()
+        connection = nil
+        isHelperConnected = false
+    }
+}
+
+/// Thread-safe one-shot flag to prevent double-resuming continuations.
+private final class Resumed: @unchecked Sendable {
+    private var _resumed = false
+    private let lock = NSLock()
+
+    func tryResume() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if _resumed { return false }
+        _resumed = true
+        return true
     }
 }
 
@@ -95,7 +169,7 @@ enum XPCError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .connectionFailed:
-            return "Could not connect to NetPath Helper. Make sure it is installed."
+            return "Could not connect to NetPath Helper. The helper service is not running."
         case .mountFailed(let status):
             switch status {
             case Int32(EAUTH), -5045:
