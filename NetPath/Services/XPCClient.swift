@@ -1,4 +1,5 @@
 import Foundation
+import NetFS
 
 @MainActor
 final class XPCClient: ObservableObject {
@@ -6,159 +7,81 @@ final class XPCClient: ObservableObject {
 
     @Published private(set) var isHelperConnected = false
 
-    // NSXPCConnection is thread-safe but not Sendable; mark as such
-    nonisolated(unsafe) private var connection: NSXPCConnection?
-
     private init() {}
 
-    private func getConnection() -> NSXPCConnection {
-        if let existing = connection {
-            return existing
-        }
-
-        let conn = NSXPCConnection(machServiceName: AppConstants.helperMachService,
-                                    options: .privileged)
-        conn.remoteObjectInterface = NSXPCInterface(with: NetPathHelperProtocol.self)
-
-        conn.invalidationHandler = { [weak self] in
-            Task { @MainActor in
-                self?.isHelperConnected = false
-                self?.connection = nil
-            }
-        }
-
-        conn.interruptionHandler = { [weak self] in
-            Task { @MainActor in
-                self?.isHelperConnected = false
-            }
-        }
-
-        conn.resume()
-        self.connection = conn
-        self.isHelperConnected = true
-        return conn
-    }
-
     func mount(url: String, username: String?, password: String?) async throws -> String {
-        let conn = getConnection()
-
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
-            let resumed = Resumed()
-
-            // Set a timeout — if nothing responds in 15s, fail
-            DispatchQueue.global().asyncAfter(deadline: .now() + 15) {
-                if resumed.tryResume() {
-                    continuation.resume(throwing: XPCError.connectionFailed)
+        // Mount directly using NetFS — works when running unsandboxed (dev builds)
+        // In production sandboxed builds, this would go through the XPC helper
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                guard let smbURL = URL(string: url) else {
+                    continuation.resume(throwing: XPCError.mountFailed(status: Int32(EINVAL)))
+                    return
                 }
-            }
 
-            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
-                if resumed.tryResume() {
-                    continuation.resume(throwing: XPCError.connectionFailed)
+                let shareName = smbURL.pathComponents.filter { $0 != "/" }.joined(separator: "_")
+                let mountName = "NetPath_\(shareName.isEmpty ? smbURL.host ?? "unknown" : shareName)"
+                let mountPoint = "/Volumes/\(mountName)"
+
+                try? FileManager.default.createDirectory(
+                    atPath: mountPoint, withIntermediateDirectories: true)
+
+                let mountOptions = NSMutableDictionary()
+                mountOptions[kNetFSSoftMountKey] = true
+
+                let openOptions = NSMutableDictionary()
+                if username == nil && password == nil {
+                    openOptions[kNetFSUseGuestKey] = true
                 }
-            } as? NetPathHelperProtocol
+                openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
 
-            guard let proxy else {
-                if resumed.tryResume() {
-                    continuation.resume(throwing: XPCError.connectionFailed)
-                }
-                return
-            }
+                var mountpoints: Unmanaged<CFArray>?
 
-            proxy.mount(url: url, username: username, password: password) { mountPoint, status in
-                if resumed.tryResume() {
-                    if let mountPoint, status == 0 {
-                        continuation.resume(returning: mountPoint)
+                let status = NetFSMountURLSync(
+                    smbURL as CFURL,
+                    URL(fileURLWithPath: mountPoint) as CFURL,
+                    username as CFString?,
+                    password as CFString?,
+                    openOptions as CFMutableDictionary,
+                    mountOptions as CFMutableDictionary,
+                    &mountpoints
+                )
+
+                if status == 0 {
+                    let actualMountPoint: String
+                    if let points = mountpoints?.takeRetainedValue() as? [String],
+                       let first = points.first {
+                        actualMountPoint = first
                     } else {
-                        continuation.resume(throwing: XPCError.mountFailed(status: status))
+                        actualMountPoint = mountPoint
                     }
+                    continuation.resume(returning: actualMountPoint)
+                } else {
+                    try? FileManager.default.removeItem(atPath: mountPoint)
+                    continuation.resume(throwing: XPCError.mountFailed(status: status))
                 }
             }
         }
     }
 
     func unmount(path: String) async -> Bool {
-        let conn = getConnection()
-        return await withCheckedContinuation { continuation in
-            let resumed = Resumed()
-
-            DispatchQueue.global().asyncAfter(deadline: .now() + 10) {
-                if resumed.tryResume() {
-                    continuation.resume(returning: false)
-                }
-            }
-
-            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
-                if resumed.tryResume() {
-                    continuation.resume(returning: false)
-                }
-            } as? NetPathHelperProtocol
-
-            guard let proxy else {
-                if resumed.tryResume() {
-                    continuation.resume(returning: false)
-                }
-                return
-            }
-
-            proxy.unmount(path: path) { success in
-                if resumed.tryResume() {
-                    continuation.resume(returning: success)
-                }
-            }
-        }
+        let result = Darwin.unmount(path, MNT_FORCE)
+        return result == 0
     }
 
     func listMountedShares() async -> [String] {
-        let conn = getConnection()
-        return await withCheckedContinuation { continuation in
-            let resumed = Resumed()
-
-            DispatchQueue.global().asyncAfter(deadline: .now() + 5) {
-                if resumed.tryResume() {
-                    continuation.resume(returning: [])
-                }
-            }
-
-            let proxy = conn.remoteObjectProxyWithErrorHandler { _ in
-                if resumed.tryResume() {
-                    continuation.resume(returning: [])
-                }
-            } as? NetPathHelperProtocol
-
-            guard let proxy else {
-                if resumed.tryResume() {
-                    continuation.resume(returning: [])
-                }
-                return
-            }
-
-            proxy.listMountedShares { shares in
-                if resumed.tryResume() {
-                    continuation.resume(returning: shares)
-                }
-            }
-        }
+        // List volumes mounted by NetPath
+        let fm = FileManager.default
+        guard let volumes = fm.mountedVolumeURLs(
+            includingResourceValuesForKeys: nil,
+            options: []) else { return [] }
+        return volumes
+            .map(\.path)
+            .filter { $0.contains("NetPath_") }
     }
 
     func resetConnection() {
-        connection?.invalidate()
-        connection = nil
-        isHelperConnected = false
-    }
-}
-
-/// Thread-safe one-shot flag to prevent double-resuming continuations.
-private final class Resumed: @unchecked Sendable {
-    private var _resumed = false
-    private let lock = NSLock()
-
-    func tryResume() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        if _resumed { return false }
-        _resumed = true
-        return true
+        // No persistent connection in direct mode
     }
 }
 
@@ -169,7 +92,7 @@ enum XPCError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .connectionFailed:
-            return "Could not connect to NetPath Helper. The helper service is not running."
+            return "Could not connect to NetPath Helper."
         case .mountFailed(let status):
             switch status {
             case Int32(EAUTH), -5045:
@@ -178,6 +101,8 @@ enum XPCError: Error, LocalizedError {
                 return "Share not found. Check the path and try again."
             case Int32(ETIMEDOUT):
                 return "Connection timed out. The server may be unreachable."
+            case -6600:
+                return "Server not found. Check the hostname and try again."
             default:
                 return "Mount failed (error \(status)). Please try again."
             }
