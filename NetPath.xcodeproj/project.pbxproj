@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		261DE1208E2C5EE25994F679 /* NetPathApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DFA151000F466CAE9969F9 /* NetPathApp.swift */; };
 		43B1261CE761FA15C7E45FFB /* UNCPathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D9E8BFF9CA8D6E58A1BFE0 /* UNCPathTests.swift */; };
+		AA11223344556677AABBCCDD /* UNCPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB11223344556677AABBCCDD /* UNCPath.swift */; };
 		518E4558056DAABC71CE6B21 /* NetPathHelper.xpc in CopyFiles */ = {isa = PBXBuildFile; fileRef = 7E8CDC2BAC49DFC61D967C21 /* NetPathHelper.xpc */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		6270042DDF27229AB7A3A97A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 933400E335BBD80F99A8AF50 /* AppDelegate.swift */; };
 		6BEC4C800B3451D4D280FB8E /* NetPathHelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4EE628A026C44ED2F4E8CBA /* NetPathHelperProtocol.swift */; };
@@ -50,6 +51,7 @@
 
 /* Begin PBXFileReference section */
 		32DFA151000F466CAE9969F9 /* NetPathApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetPathApp.swift; sourceTree = "<group>"; };
+		BB11223344556677AABBCCDD /* UNCPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UNCPath.swift; sourceTree = "<group>"; };
 		47D9E8BFF9CA8D6E58A1BFE0 /* UNCPathTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UNCPathTests.swift; sourceTree = "<group>"; };
 		59BA44471E94FD6F802607CB /* NetPathTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NetPathTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7E8CDC2BAC49DFC61D967C21 /* NetPathHelper.xpc */ = {isa = PBXFileReference; explicitFileType = "wrapper.xpc-service"; includeInIndex = 0; path = NetPathHelper.xpc; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -79,6 +81,14 @@
 				32DFA151000F466CAE9969F9 /* NetPathApp.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		CC11223344556677AABBCCDD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				BB11223344556677AABBCCDD /* UNCPath.swift */,
+			);
+			path = Models;
 			sourceTree = "<group>";
 		};
 		39249E867BC9FDABC8529B17 /* Products */ = {
@@ -122,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				3892ABFCDB8F071547891E07 /* App */,
+				CC11223344556677AABBCCDD /* Models */,
 				521910BBAD72B931CA969629 /* Resources */,
 			);
 			path = NetPath;
@@ -264,6 +275,7 @@
 				6270042DDF27229AB7A3A97A /* AppDelegate.swift in Sources */,
 				261DE1208E2C5EE25994F679 /* NetPathApp.swift in Sources */,
 				6BEC4C800B3451D4D280FB8E /* NetPathHelperProtocol.swift in Sources */,
+				AA11223344556677AABBCCDD /* UNCPath.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
