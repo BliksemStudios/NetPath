@@ -11,6 +11,7 @@
 		0B2DDF921A920AA70AF672C5 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C2FC8ECE90DA1E8E544F61 /* KeychainService.swift */; };
 		116FDE995701054CB30C4F91 /* FileSystemServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1ED1721F340C70CBEAB93310 /* FileSystemServiceTests.swift */; };
 		11CB4CA7945E8892F1EA325C /* FileRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDC913C0C6ED483CDAA5CCB0 /* FileRowView.swift */; };
+		18A28AC03DD660870873BC0C /* TransparentHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C46B36BFE42BEA758727621 /* TransparentHostingView.swift */; };
 		23E8998483274E38E318A7B3 /* HelperDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182FFE6100CA19138E3D26C3 /* HelperDelegate.swift */; };
 		23FDA4321497DA04C702F283 /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED5E05963C022BDF7BE33C6 /* Extensions.swift */; };
 		261DE1208E2C5EE25994F679 /* NetPathApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32DFA151000F466CAE9969F9 /* NetPathApp.swift */; };
@@ -108,6 +109,7 @@
 		59BA44471E94FD6F802607CB /* NetPathTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NetPathTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5E8195465AA2533C8F944EF7 /* HistorySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistorySettingsView.swift; sourceTree = "<group>"; };
 		66E1A0931B578F26F85297EC /* DirectoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryListView.swift; sourceTree = "<group>"; };
+		6C46B36BFE42BEA758727621 /* TransparentHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransparentHostingView.swift; sourceTree = "<group>"; };
 		6ED2B2E79E6A097CF250E82E /* MountService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MountService.swift; sourceTree = "<group>"; };
 		78C2FC8ECE90DA1E8E544F61 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		79DBDAC1A8EA2C5FC9F123C6 /* HotkeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyService.swift; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 			children = (
 				873572E5286A0EF168BD507E /* CredentialSheet.swift */,
 				7BF3AFB542B6CDF301524578 /* LoadingIndicator.swift */,
+				6C46B36BFE42BEA758727621 /* TransparentHostingView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -479,6 +482,7 @@
 				D022AC42B7BFD3A30F0E68AA /* SettingsViewModel.swift in Sources */,
 				996CB435E30B42843D38F789 /* SidebarView.swift in Sources */,
 				AF5DC1BB359A4D52A22A4C51 /* StatusBarView.swift in Sources */,
+				18A28AC03DD660870873BC0C /* TransparentHostingView.swift in Sources */,
 				88E60C7A09D5AB999117A3D2 /* UNCPath.swift in Sources */,
 				C7F0BB996941EE3EF439FC80 /* XPCClient.swift in Sources */,
 			);

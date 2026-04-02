@@ -77,28 +77,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .modelContainer(container)
 
-        let hostingController = NSHostingController(rootView: launcherView)
-        hostingController.view.wantsLayer = true
-        hostingController.view.layer?.backgroundColor = .clear
+        // Wrap the hosting view in a container that provides shadow + corner masking.
+        // The container draws the shadow (not clipped), the inner view clips corners.
+        let hostingView = NSHostingView(rootView: launcherView)
 
-        // The panel itself must have no background
-        panel.contentView = hostingController.view
+        let containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.layer?.backgroundColor = .clear
+        containerView.layer?.shadowColor = NSColor.black.cgColor
+        containerView.layer?.shadowOpacity = 0.3
+        containerView.layer?.shadowRadius = 20
+        containerView.layer?.shadowOffset = CGSize(width: 0, height: -8)
 
-        // Force the hosting view hierarchy to be transparent
-        func clearBackgrounds(of view: NSView) {
-            view.wantsLayer = true
-            view.layer?.backgroundColor = .clear
-            view.layer?.isOpaque = false
-            for sub in view.subviews { clearBackgrounds(of: sub) }
-        }
+        hostingView.wantsLayer = true
+        hostingView.layer?.cornerRadius = Design.Launcher.cornerRadius
+        hostingView.layer?.masksToBounds = true
 
-        // Apply after layout
-        DispatchQueue.main.async {
-            if let cv = panel.contentView {
-                clearBackgrounds(of: cv)
-            }
-        }
+        containerView.addSubview(hostingView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+        ])
 
+        panel.contentView = containerView
         panel.makeKeyAndOrderFront(nil)
 
         if let screen = NSScreen.main {
