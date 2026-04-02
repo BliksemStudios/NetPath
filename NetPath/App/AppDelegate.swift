@@ -52,6 +52,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyService.onHotkeyPressed = { [weak self] in
             self?.toggleLauncher()
         }
+        hotkeyService.onLastSessionPressed = { [weak self] in
+            self?.openLastSession()
+        }
         hotkeyService.register()
     }
 
