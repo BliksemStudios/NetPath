@@ -1,0 +1,92 @@
+name: NetPath
+options:
+  bundleIdPrefix: com.bliksem
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  minimumXcodeGenVersion: "2.38.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  NetPath:
+    type: application
+    platform: macOS
+    sources:
+      - path: NetPath
+        excludes:
+          - "**/.DS_Store"
+      - path: NetPathShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bliksem.netpath
+        GENERATE_INFOPLIST_FILE: true
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_ENTITLEMENTS: NetPath/Resources/NetPath.entitlements
+        PRODUCT_NAME: NetPath
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: true
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+    dependencies:
+      - target: NetPathHelper
+        embed: true
+        codeSign: true
+
+  NetPathHelper:
+    type: xpc-service
+    platform: macOS
+    sources:
+      - path: NetPathHelper
+        excludes:
+          - "**/.DS_Store"
+      - path: NetPathShared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bliksem.netpath.helper
+        INFOPLIST_FILE: NetPathHelper/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NetPathHelper/NetPathHelper.entitlements
+        PRODUCT_NAME: NetPathHelper
+        SKIP_INSTALL: true
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/../Frameworks"
+    info:
+      path: NetPathHelper/Info.plist
+
+  NetPathTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: NetPathTests
+        excludes:
+          - "**/.DS_Store"
+      - path: NetPathShared
+    dependencies:
+      - target: NetPath
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.bliksem.netpath.tests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/NetPath.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/NetPath"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
+schemes:
+  NetPath:
+    build:
+      targets:
+        NetPath: all
+        NetPathHelper: all
+        NetPathTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - NetPathTests
