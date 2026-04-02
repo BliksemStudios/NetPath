@@ -148,8 +148,6 @@ struct LauncherView: View {
                 }
             }
         }
-        .background(.ultraThinMaterial)
-        .cornerRadius(Design.Launcher.cornerRadius)
         .frame(width: Design.Launcher.width)
         .onAppear {
             if viewModel == nil {

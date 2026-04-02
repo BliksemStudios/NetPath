@@ -77,32 +77,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .modelContainer(container)
 
-        // Wrap the hosting view in a container that provides shadow + corner masking.
-        // The container draws the shadow (not clipped), the inner view clips corners.
+        // Architecture: NSVisualEffectView (rounded, provides material blur)
+        //              └── NSHostingView (transparent SwiftUI content on top)
+        // This avoids NSHostingView's opaque background bleeding at corners.
+
+        let effectView = NSVisualEffectView()
+        effectView.material = .hudWindow
+        effectView.state = .active
+        effectView.blendingMode = .behindWindow
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = Design.Launcher.cornerRadius
+        effectView.layer?.masksToBounds = true
+
+        // Shadow on a wrapper (not clipped by masksToBounds)
+        let shadowView = NSView()
+        shadowView.wantsLayer = true
+        shadowView.shadow = NSShadow()
+        shadowView.layer?.shadowColor = NSColor.black.cgColor
+        shadowView.layer?.shadowOpacity = 0.35
+        shadowView.layer?.shadowRadius = 20
+        shadowView.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        shadowView.layer?.cornerRadius = Design.Launcher.cornerRadius
+
+        // Hosting view — transparent, just the SwiftUI content
         let hostingView = NSHostingView(rootView: launcherView)
 
-        let containerView = NSView()
-        containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = .clear
-        containerView.layer?.shadowColor = NSColor.black.cgColor
-        containerView.layer?.shadowOpacity = 0.3
-        containerView.layer?.shadowRadius = 20
-        containerView.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        // Stack: shadowView > effectView > hostingView
+        shadowView.addSubview(effectView)
+        effectView.addSubview(hostingView)
 
-        hostingView.wantsLayer = true
-        hostingView.layer?.cornerRadius = Design.Launcher.cornerRadius
-        hostingView.layer?.masksToBounds = true
+        for v in [effectView, hostingView] as [NSView] {
+            v.translatesAutoresizingMaskIntoConstraints = false
+        }
+        shadowView.translatesAutoresizingMaskIntoConstraints = false
 
-        containerView.addSubview(hostingView)
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            effectView.topAnchor.constraint(equalTo: shadowView.topAnchor),
+            effectView.bottomAnchor.constraint(equalTo: shadowView.bottomAnchor),
+            effectView.leadingAnchor.constraint(equalTo: shadowView.leadingAnchor),
+            effectView.trailingAnchor.constraint(equalTo: shadowView.trailingAnchor),
+
+            hostingView.topAnchor.constraint(equalTo: effectView.topAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
         ])
 
-        panel.contentView = containerView
+        panel.contentView = shadowView
         panel.makeKeyAndOrderFront(nil)
 
         if let screen = NSScreen.main {
