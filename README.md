@@ -10,16 +10,56 @@ NetPath lets you type familiar UNC paths (`\\server\share\folder`) and instantly
 
 ---
 
+## Screenshots
+
+### Launcher
+
+Summon with `Cmd+Shift+\` from anywhere. Type or paste a UNC path.
+
+<p align="center">
+  <img src="docs/screenshots/launcher-empty.png" alt="NetPath Launcher" width="600">
+</p>
+
+### Authentication
+
+Credentials are stored in macOS Keychain. Kerberos is used automatically when available.
+
+<p align="center">
+  <img src="docs/screenshots/launcher-credentials.png" alt="Credential Entry" width="500">
+</p>
+
+### File Browser
+
+Browse shares with a tree sidebar, sortable columns, and grid view.
+
+<p align="center">
+  <img src="docs/screenshots/browser-list-view.png" alt="Browser - List View" width="700">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/browser-grid-view.png" alt="Browser - Grid View" width="700">
+</p>
+
+### Settings
+
+<p align="center">
+  <img src="docs/screenshots/settings-general.png" alt="Settings" width="400">
+</p>
+
+---
+
 ## Features
 
 - **Spotlight-style launcher** — Press `Cmd+Shift+\` to summon a floating search bar. Paste or type a UNC path and hit Enter.
 - **Automatic path conversion** — `\\server\share\path` is silently converted to `smb://server/share/path`
 - **Smart authentication** — Uses Kerberos when available, stores credentials in macOS Keychain, shows an in-app credential form as fallback
-- **Full file browser** — Address bar with clickable breadcrumbs, sortable list/grid views, context menus, sidebar with pinned paths and recent history
+- **Full file browser** — Address bar with clickable breadcrumbs, sortable list/grid views, context menus, tree sidebar
 - **Keyboard-first** — Arrow keys navigate suggestions, Enter connects, Escape dismisses. Global hotkeys work from any app.
-- **History & favorites** — Recently visited paths appear instantly in the launcher. Pin frequently used paths.
+- **History** — Recently visited paths appear instantly in the launcher
 - **Open Last Session** — Press `Cmd+Shift+L` to reconnect to your last browsed path
 - **Menu bar app** — Lives in the menu bar, no dock clutter
+- **Copy & Paste** — Copy files, folders, UNC paths, SMB URLs. Paste files into shares.
+- **Rich context menu** — Open With, Get Info, Copy, Paste, Reveal in Finder, New Folder, Move to Trash
 
 ## Keyboard Shortcuts
 
@@ -69,7 +109,7 @@ Download the latest DMG from [GitHub Releases](https://github.com/BliksemStudios
 
 NetPath is a three-target Xcode project:
 
-- **NetPath.app** — Main SwiftUI app (sandboxed for App Store)
+- **NetPath.app** — Main SwiftUI app
 - **NetPathHelper** — XPC service for privileged NetFS mount operations
 - **NetPathShared** — Shared XPC protocol
 
@@ -82,7 +122,7 @@ NetPath follows the **Voltaic Precision** design system by Bliksem Studios:
 - Primary accent: Electric Blue `#0066FF`
 - Dark mode is the hero mode
 - SF Pro for UI, SF Mono for all path text
-- Translucent `.ultraThinMaterial` launcher panel
+- Translucent material launcher panel
 - Subtle, fast spring animations
 
 ## Contributing

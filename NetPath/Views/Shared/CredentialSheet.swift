@@ -43,7 +43,7 @@ struct CredentialSheet: View {
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .frame(width: 70, alignment: .trailing)
-                    TextField("GGN", text: $domain)
+                    TextField("CORP", text: $domain)
                         .textFieldStyle(.roundedBorder)
                         .font(Design.Fonts.pathMono)
                         .focused($focusedField, equals: .domain)

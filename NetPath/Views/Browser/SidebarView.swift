@@ -1,54 +1,87 @@
 import SwiftUI
 import SwiftData
 
+/// Tree-style folder browser sidebar showing the directory hierarchy
 struct SidebarView: View {
-    @Query(filter: #Predicate<PathEntry> { $0.isPinned }, sort: \PathEntry.uncPath) private var pinnedPaths: [PathEntry]
-    @Query(filter: #Predicate<PathEntry> { !$0.isPinned }, sort: \PathEntry.lastVisited, order: .reverse) private var recentPaths: [PathEntry]
-    @Query(filter: #Predicate<MountSession> { $0.isActive }) private var activeMounts: [MountSession]
-
-    var onNavigate: ((String) -> Void)?
+    @Bindable var viewModel: BrowserViewModel
 
     var body: some View {
-        List {
-            Section {
-                ForEach(pinnedPaths) { entry in
-                    sidebarRow(icon: "star.fill", iconColor: Design.Colors.accent, label: shortLabel(entry.uncPath), fullPath: entry.uncPath)
-                }
-            } header: { Text("Pinned").font(Design.Fonts.sectionHeader).textCase(.uppercase).tracking(0.5) }
+        VStack(alignment: .leading, spacing: 0) {
+            // Server/share header
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(Design.Colors.connectedGreen)
+                    .frame(width: 6, height: 6)
+                Text(viewModel.currentPath.server)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
 
-            Section {
-                ForEach(recentPaths.prefix(10)) { entry in
-                    sidebarRow(icon: "clock.arrow.circlepath", iconColor: .secondary, label: shortLabel(entry.uncPath), fullPath: entry.uncPath)
-                }
-            } header: { Text("Recent").font(Design.Fonts.sectionHeader).textCase(.uppercase).tracking(0.5) }
+            Divider().opacity(0.3)
 
-            Section {
-                ForEach(activeMounts) { session in
-                    HStack(spacing: 8) {
-                        Circle().fill(Design.Colors.connectedGreen).frame(width: 6, height: 6)
-                        Text("\(session.server)/\(session.sharePath)").font(.system(size: 13)).lineLimit(1)
+            // Tree view
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(viewModel.sidebarFolders) { folder in
+                        SidebarFolderRow(
+                            folder: folder,
+                            isCurrentPath: folder.uncPath == viewModel.currentPath,
+                            onNavigate: { viewModel.navigateTo(path: folder.uncPath) }
+                        )
                     }
                 }
-            } header: { Text("Mounted").font(Design.Fonts.sectionHeader).textCase(.uppercase).tracking(0.5) }
-        }
-        .listStyle(.sidebar)
-        .frame(minWidth: Design.Browser.sidebarWidth)
-    }
-
-    private func sidebarRow(icon: String, iconColor: Color, label: String, fullPath: String) -> some View {
-        Button(action: { onNavigate?(fullPath) }) {
-            HStack(spacing: 8) {
-                Image(systemName: icon).foregroundStyle(iconColor).font(.system(size: 13))
-                Text(label).font(.system(size: 13)).lineLimit(1)
+                .padding(.vertical, 4)
             }
         }
-        .buttonStyle(.plain)
-        .help(fullPath)
+        .frame(minWidth: Design.Browser.sidebarWidth)
     }
+}
 
-    private func shortLabel(_ uncPath: String) -> String {
-        let parts = uncPath.replacingOccurrences(of: "\\\\", with: "").split(separator: "\\")
-        if parts.count <= 2 { return parts.joined(separator: "\\") }
-        return parts.suffix(2).joined(separator: "\\")
+struct SidebarFolder: Identifiable {
+    let id = UUID()
+    let name: String
+    let uncPath: UNCPath
+    let depth: Int
+    let isExpanded: Bool
+}
+
+struct SidebarFolderRow: View {
+    let folder: SidebarFolder
+    let isCurrentPath: Bool
+    let onNavigate: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: onNavigate) {
+            HStack(spacing: 4) {
+                // Indentation
+                Spacer().frame(width: CGFloat(folder.depth) * 16)
+
+                Image(systemName: folder.isExpanded ? "folder.fill" : "folder")
+                    .font(.system(size: 12))
+                    .foregroundStyle(isCurrentPath ? Design.Colors.accent : .secondary)
+                    .frame(width: 16)
+
+                Text(folder.name)
+                    .font(.system(size: 12))
+                    .foregroundStyle(isCurrentPath ? .primary : .secondary)
+                    .lineLimit(1)
+
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(isCurrentPath ? Design.Colors.selectedHighlight
+                          : isHovered ? Design.Colors.hoverHighlight
+                          : Color.clear)
+                    .padding(.horizontal, 4)
+            )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }

@@ -6,24 +6,27 @@ struct BrowserView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Spacer for titlebar (fullSizeContentView mode)
-            Color.clear.frame(height: 28)
-
-            // Address bar
+            // Address bar — directly under the titlebar
             AddressBar(viewModel: viewModel)
 
             Divider().opacity(0.4)
 
-            // Main content area
-            NavigationSplitView {
-                SidebarView { uncPath in
-                    if let path = UNCPath(from: uncPath) { viewModel.navigateTo(path: path) }
-                }
-            } detail: {
+            // Main content: sidebar + file listing
+            HSplitView {
+                SidebarView(viewModel: viewModel)
+                    .frame(minWidth: 180, idealWidth: 220, maxWidth: 300)
+
+                // File listing
                 ZStack {
                     if viewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Loading...")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if let error = viewModel.errorMessage {
                         VStack(spacing: 16) {
                             Image(systemName: "exclamationmark.triangle")
@@ -33,6 +36,7 @@ struct BrowserView: View {
                                 .font(.system(size: 13))
                                 .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
+                                .padding(.horizontal)
                             Button("Retry") { viewModel.refresh() }
                                 .buttonStyle(.bordered)
                         }
@@ -71,6 +75,5 @@ struct BrowserView: View {
             )
         }
         .frame(minWidth: Design.Browser.minWindowWidth, minHeight: Design.Browser.minWindowHeight)
-        .background(.background)
     }
 }

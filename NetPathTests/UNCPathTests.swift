@@ -12,9 +12,9 @@ final class UNCPathTests: XCTestCase {
     }
 
     func testParseUNCPathWithMultipleComponents() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)
         XCTAssertNotNil(path)
-        XCTAssertEqual(path?.server, "ggn.global")
+        XCTAssertEqual(path?.server, "corp.example.com")
         XCTAssertEqual(path?.share, "dfs")
         XCTAssertEqual(path?.components, ["ICT", "DEV"])
     }
@@ -36,8 +36,8 @@ final class UNCPathTests: XCTestCase {
     }
 
     func testSMBURLFromUNC() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)!
-        XCTAssertEqual(path.smbURL.absoluteString, "smb://ggn.global/dfs/ICT/DEV")
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)!
+        XCTAssertEqual(path.smbURL.absoluteString, "smb://corp.example.com/dfs/ICT/DEV")
     }
 
     func testSMBURLServerAndShare() {
@@ -51,8 +51,8 @@ final class UNCPathTests: XCTestCase {
     }
 
     func testUNCStringRoundTrip() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)!
-        XCTAssertEqual(path.uncString, #"\\ggn.global\dfs\ICT\DEV"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)!
+        XCTAssertEqual(path.uncString, #"\\corp.example.com\dfs\ICT\DEV"#)
     }
 
     func testParseSMBURL() {
@@ -143,8 +143,8 @@ final class UNCPathTests: XCTestCase {
     }
 
     func testDisplayPathEqualsUNCString() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT"#)!
-        XCTAssertEqual(path.displayPath, #"\\ggn.global\dfs\ICT"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT"#)!
+        XCTAssertEqual(path.displayPath, #"\\corp.example.com\dfs\ICT"#)
     }
 
     func testAppendingComponent() {

@@ -56,6 +56,40 @@ final class BrowserViewModel {
         return crumbs
     }
 
+    /// Builds the folder tree for the sidebar — shows the path hierarchy
+    /// from the share root down to the current location, plus sibling folders
+    var sidebarFolders: [SidebarFolder] {
+        guard let share = currentPath.share else { return [] }
+        var folders: [SidebarFolder] = []
+
+        // Share root
+        let sharePath = UNCPath(server: currentPath.server, share: share, components: [])
+        folders.append(SidebarFolder(name: share, uncPath: sharePath, depth: 0,
+                                      isExpanded: !currentPath.components.isEmpty))
+
+        // Each component in the current path
+        for (i, comp) in currentPath.components.enumerated() {
+            let compPath = UNCPath(server: currentPath.server, share: share,
+                                    components: Array(currentPath.components.prefix(i + 1)))
+            let isLast = i == currentPath.components.count - 1
+            folders.append(SidebarFolder(name: comp, uncPath: compPath, depth: i + 1,
+                                          isExpanded: !isLast))
+        }
+
+        // Current directory's subfolders
+        let subFolders = items.filter(\.isDirectory).sorted { a, b in
+            a.name.localizedStandardCompare(b.name) == .orderedAscending
+        }
+        let subDepth = currentPath.components.count + 1
+        for sub in subFolders {
+            let subPath = currentPath.appending(component: sub.name)
+            folders.append(SidebarFolder(name: sub.name, uncPath: subPath, depth: subDepth,
+                                          isExpanded: false))
+        }
+
+        return folders
+    }
+
     var sortedItems: [FileItem] {
         items.sorted { a, b in
             if a.isDirectory != b.isDirectory { return a.isDirectory }
@@ -180,11 +214,17 @@ final class BrowserViewModel {
     }
 
     func getFileInfo(_ item: FileItem) {
-        // Reveal info in Finder (Cmd+I equivalent)
-        let source = "tell application \"Finder\" to open information window of (POSIX file \"\(item.path.path)\" as alias)"
-        if let script = NSAppleScript(source: source) {
+        // Use NSWorkspace to show the Finder Get Info window
+        NSWorkspace.shared.activateFileViewerSelecting([item.path])
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let source = """
+            tell application "Finder"
+                activate
+                open information window of (POSIX file "\(item.path.path)" as alias)
+            end tell
+            """
             var error: NSDictionary?
-            script.executeAndReturnError(&error)
+            NSAppleScript(source: source)?.executeAndReturnError(&error)
         }
     }
 
@@ -221,6 +261,45 @@ final class BrowserViewModel {
         } catch {
             errorMessage = "Could not create folder: \(error.localizedDescription)"
         }
+    }
+
+    func copyFileToClipboard(_ item: FileItem) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.writeObjects([item.path as NSURL])
+    }
+
+    func pasteFromClipboard() {
+        guard let urls = NSPasteboard.general.readObjects(forClasses: [NSURL.self], options: nil) as? [URL],
+              !urls.isEmpty else { return }
+
+        var localPath = URL(fileURLWithPath: mountPoint)
+        for component in currentPath.components {
+            localPath.appendPathComponent(component)
+        }
+
+        for sourceURL in urls {
+            let destURL = localPath.appendingPathComponent(sourceURL.lastPathComponent)
+            do {
+                try FileManager.default.copyItem(at: sourceURL, to: destURL)
+            } catch {
+                errorMessage = "Paste failed: \(error.localizedDescription)"
+                return
+            }
+        }
+        loadDirectory()
+    }
+
+    var canPaste: Bool {
+        guard let types = NSPasteboard.general.types else { return false }
+        return types.contains(.fileURL)
+    }
+
+    func openCurrentDirectoryInFinder() {
+        var localPath = URL(fileURLWithPath: mountPoint)
+        for component in currentPath.components {
+            localPath.appendPathComponent(component)
+        }
+        NSWorkspace.shared.open(localPath)
     }
 
     func refresh() {

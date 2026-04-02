@@ -78,7 +78,16 @@
       "Bash(osascript -e 'tell application \"\"System Events\"\" to tell process \"\"NetPath\"\" to click menu bar item 1 of menu bar 2')",
       "Bash(osascript -e 'tell application \"\"System Events\"\" to tell process \"\"NetPath\"\" to click menu item \"\"Open NetPath\"\" of menu 1 of menu bar item 1 of menu bar 2')",
       "Bash(osascript:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep -ri ggn docs/ README.md --include=*.md -n)",
+      "Bash(grep -ri ggn . --include=*.md --include=*.swift --include=*.yml --include=*.yaml --include=*.json -n)",
+      "Bash(ls -la /tmp/ss_d*.png)",
+      "Bash(grep -ri \"ggn\\\\|GGN\\\\|jduplessis\\\\|jeanknox\" . -n --include=*.swift --include=*.md --include=*.yml --include=*.yaml --include=*.json --include=*.plist --include=*.xml --include=*.txt)",
+      "Bash(mv \"Screenshot 2026-04-02 at 14.37.07.png\" \"launcher-empty.png\")",
+      "Bash(mv \"Screenshot 2026-04-02 at 14.42.13.png\" \"browser-empty-folder.png\")",
+      "Bash(mv \"Screenshot 2026-04-02 at 14.51.41.png\" \"settings-general.png\")",
+      "Bash(mv \"Screenshot 2026-04-02 at 14.51.54.png\" \"settings-credentials.png\")",
+      "Bash(mv \"Screenshot 2026-04-02 at 14.52.02.png\" \"settings-history.png\")"
     ]
   }
 }

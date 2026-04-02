@@ -10,7 +10,7 @@ struct FileContextMenu: View {
             if item.isDirectory { viewModel.navigateIntoFolder(item) }
             else { viewModel.openFile(item) }
         } label: {
-            Label(item.isDirectory ? "Open" : "Open", systemImage: item.isDirectory ? "folder" : "doc")
+            Label("Open", systemImage: item.isDirectory ? "folder" : "doc")
         }
 
         if !item.isDirectory {
@@ -23,48 +23,60 @@ struct FileContextMenu: View {
 
         Divider()
 
-        // Info
+        // Get Info
         Button {
             viewModel.getFileInfo(item)
         } label: {
             Label("Get Info", systemImage: "info.circle")
         }
-        .keyboardShortcut("i", modifiers: .command)
 
         Divider()
 
-        // Copy options
+        // Copy file/folder to clipboard
+        Button {
+            viewModel.copyFileToClipboard(item)
+        } label: {
+            Label("Copy", systemImage: "doc.on.doc")
+        }
+
+        // Copy path submenu
         Menu {
             Button {
                 viewModel.copyUNCPath(item)
             } label: {
                 Label("UNC Path", systemImage: "network")
             }
-
             Button {
                 viewModel.copySMBURL(item)
             } label: {
                 Label("SMB URL", systemImage: "link")
             }
-
             Button {
                 viewModel.copyFileName(item)
             } label: {
                 Label("File Name", systemImage: "textformat")
             }
-
             Button {
                 viewModel.copyRelativePath(item)
             } label: {
                 Label("Relative Path", systemImage: "arrow.right")
             }
         } label: {
-            Label("Copy", systemImage: "doc.on.doc")
+            Label("Copy Path", systemImage: "link")
+        }
+
+        // Paste
+        if viewModel.canPaste {
+            Button {
+                viewModel.pasteFromClipboard()
+            } label: {
+                Label("Paste", systemImage: "doc.on.clipboard")
+            }
         }
 
         Divider()
 
-        // Finder integration
+        // Finder
         Button {
             viewModel.revealInFinder(item)
         } label: {
@@ -82,7 +94,6 @@ struct FileContextMenu: View {
     }
 }
 
-/// Context menu shown when right-clicking empty space in the browser
 struct DirectoryContextMenu: View {
     @Bindable var viewModel: BrowserViewModel
 
@@ -92,16 +103,24 @@ struct DirectoryContextMenu: View {
         } label: {
             Label("New Folder", systemImage: "folder.badge.plus")
         }
-        .keyboardShortcut("n", modifiers: [.command, .shift])
 
         Divider()
+
+        if viewModel.canPaste {
+            Button {
+                viewModel.pasteFromClipboard()
+            } label: {
+                Label("Paste", systemImage: "doc.on.clipboard")
+            }
+
+            Divider()
+        }
 
         Button {
             viewModel.refresh()
         } label: {
             Label("Refresh", systemImage: "arrow.clockwise")
         }
-        .keyboardShortcut("r", modifiers: .command)
 
         Divider()
 
@@ -112,10 +131,7 @@ struct DirectoryContextMenu: View {
         }
 
         Button {
-            viewModel.revealInFinder(
-                FileItem(id: "", name: "", path: URL(fileURLWithPath: "/"),
-                         isDirectory: true, size: nil, dateModified: nil, contentType: nil)
-            )
+            viewModel.openCurrentDirectoryInFinder()
         } label: {
             Label("Open in Finder", systemImage: "arrow.forward.to.line")
         }

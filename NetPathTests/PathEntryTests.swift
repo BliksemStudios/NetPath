@@ -14,7 +14,7 @@ final class PathEntryTests: XCTestCase {
     }
 
     func testFuzzyMatchPartialComponent() {
-        let entry = PathEntry(uncPath: #"\\ggn.global\dfs\ICT\DEV"#, server: "ggn.global")
+        let entry = PathEntry(uncPath: #"\\corp.example.com\dfs\ICT\DEV"#, server: "corp.example.com")
         XCTAssertTrue(entry.fuzzyMatches(query: "ICT"))
     }
 

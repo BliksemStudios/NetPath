@@ -183,25 +183,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .modelContainer(container)
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0,
-                                width: Design.Browser.minWindowWidth,
-                                height: Design.Browser.minWindowHeight),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            contentRect: NSRect(x: 0, y: 0, width: 1100, height: 700),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
 
-        let hostingView = NSHostingView(rootView: browserView)
-        window.contentView = hostingView
-        window.title = path.displayPath
-        window.titlebarAppearsTransparent = true
+        window.contentView = NSHostingView(rootView: browserView)
+        window.title = "NetPath"
+        window.subtitle = path.displayPath
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: Design.Browser.minWindowWidth,
                                 height: Design.Browser.minWindowHeight)
-
-        // Ensure content clips to window's rounded corners
-        window.contentView?.wantsLayer = true
-        window.contentView?.layer?.masksToBounds = true
         window.center()
         window.makeKeyAndOrderFront(nil)
 
@@ -210,8 +203,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         browserWindows.append(window)
     }
 
+    private var settingsWindow: NSWindow?
+
     @objc private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if let existing = settingsWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        guard let container = modelContainer else { return }
+
+        let settingsView = SettingsView()
+            .modelContainer(container)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 400),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: settingsView)
+        window.title = "NetPath Settings"
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        settingsWindow = window
     }
 }

@@ -89,7 +89,10 @@ struct LauncherView: View {
 
                 // Connecting status
                 if viewModel.connectionState.isConnecting {
-                    HStack {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .frame(width: 16, height: 16)
                         if case .connecting(let server) = viewModel.connectionState {
                             Text("Connecting to \(server)...")
                                 .font(Design.Fonts.pathMonoSmall)
@@ -98,7 +101,7 @@ struct LauncherView: View {
                         Spacer()
                     }
                     .padding(.horizontal, Design.Launcher.inputPadding)
-                    .padding(.leading, 32)
+                    .padding(.leading, 16)
                     .padding(.bottom, 8)
                 }
 

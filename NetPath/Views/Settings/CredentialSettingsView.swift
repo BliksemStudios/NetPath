@@ -7,7 +7,7 @@ struct CredentialSettingsView: View {
     var body: some View {
         Form {
             Section("Default Domain") {
-                TextField("Domain (e.g. GGN)", text: Binding(
+                TextField("Domain (e.g. CORP)", text: Binding(
                     get: { viewModel.settings.defaultDomain ?? "" },
                     set: {
                         viewModel.settings.defaultDomain = $0.isEmpty ? nil : $0

@@ -521,10 +521,10 @@ final class UNCPathTests: XCTestCase {
     }
 
     func testParseUNCPathWithMultipleComponents() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)
         XCTAssertNotNil(path)
-        XCTAssertEqual(path?.server, "ggn.global")
-        XCTAssertEqual(path?.share, "dfs")
+        XCTAssertEqual(path?.server, "corp.example.com")
+        XCTAssertEqual(path?.share, "shared")
         XCTAssertEqual(path?.components, ["ICT", "DEV"])
     }
 
@@ -547,8 +547,8 @@ final class UNCPathTests: XCTestCase {
     // MARK: - SMB URL Output
 
     func testSMBURLFromUNC() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)!
-        XCTAssertEqual(path.smbURL.absoluteString, "smb://ggn.global/dfs/ICT/DEV")
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)!
+        XCTAssertEqual(path.smbURL.absoluteString, "smb://corp.example.com/shared/Projects/Dev")
     }
 
     func testSMBURLServerAndShare() {
@@ -564,8 +564,8 @@ final class UNCPathTests: XCTestCase {
     // MARK: - UNC String Output
 
     func testUNCStringRoundTrip() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT\DEV"#)!
-        XCTAssertEqual(path.uncString, #"\\ggn.global\dfs\ICT\DEV"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT\DEV"#)!
+        XCTAssertEqual(path.uncString, #"\\corp.example.com\dfs\ICT\DEV"#)
     }
 
     // MARK: - SMB URL Input
@@ -665,8 +665,8 @@ final class UNCPathTests: XCTestCase {
     // MARK: - Display Path
 
     func testDisplayPathEqualsUNCString() {
-        let path = UNCPath(from: #"\\ggn.global\dfs\ICT"#)!
-        XCTAssertEqual(path.displayPath, #"\\ggn.global\dfs\ICT"#)
+        let path = UNCPath(from: #"\\corp.example.com\dfs\ICT"#)!
+        XCTAssertEqual(path.displayPath, #"\\corp.example.com\dfs\ICT"#)
     }
 
     // MARK: - Path by appending
@@ -1019,7 +1019,7 @@ final class PathEntryTests: XCTestCase {
     }
 
     func testFuzzyMatchPartialComponent() {
-        let entry = PathEntry(uncPath: #"\\ggn.global\dfs\ICT\DEV"#, server: "ggn.global")
+        let entry = PathEntry(uncPath: #"\\corp.example.com\dfs\ICT\DEV"#, server: "corp.example.com")
         XCTAssertTrue(entry.fuzzyMatches(query: "ICT"))
     }
 
@@ -1178,7 +1178,7 @@ extension URL {
 }
 
 extension String {
-    /// Extract domain prefix from a hostname (e.g. "GGN" from "ggn.global")
+    /// Extract domain prefix from a hostname (e.g. "CORP" from "corp.example.com")
     var domainPrefix: String {
         let parts = split(separator: ".")
         guard let first = parts.first else { return self }
@@ -3842,7 +3842,7 @@ struct CredentialSettingsView: View {
     var body: some View {
         Form {
             Section("Default Domain") {
-                TextField("Domain (e.g. GGN)", text: Binding(
+                TextField("Domain (e.g. CORP)", text: Binding(
                     get: { viewModel.settings.defaultDomain ?? "" },
                     set: {
                         viewModel.settings.defaultDomain = $0.isEmpty ? nil : $0

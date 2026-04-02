@@ -152,7 +152,7 @@ Three sections:
 
 ```swift
 struct UNCPath {
-    let server: String        // "ggn.global"
+    let server: String        // "corp.example.com"
     let share: String?        // "dfs" (nil if server-only)
     let components: [String]  // ["ICT", "DEV"]
 
@@ -199,7 +199,7 @@ struct UNCPath {
 1. User enters path → app checks Keychain for server hostname
 2. **Found** → pass via XPC → mount silently
 3. **Not found** → show credential sheet:
-   - Domain (pre-filled from server hostname, e.g. `GGN` from `ggn.global`)
+   - Domain (pre-filled from server hostname, e.g. `CORP` from `corp.example.com`)
    - Username (accepts `DOMAIN\username` format)
    - Password (secure entry)
    - "Save to Keychain" checkbox (default: checked)
@@ -208,8 +208,8 @@ struct UNCPath {
 ### Keychain Storage
 
 - Service: `com.bliksem.netpath`
-- Account: server hostname (e.g. `ggn.global`)
-- Data: JSON `{ "domain": "GGN", "username": "jduplessis", "password": "..." }`
+- Account: server hostname (e.g. `corp.example.com`)
+- Data: JSON `{ "domain": "CORP", "username": "jsmith", "password": "..." }`
 - Uses Security framework directly
 
 ### Settings Management
@@ -250,8 +250,8 @@ struct UNCPath {
 
 ```swift
 @Model class PathEntry {
-    var uncPath: String       // "\\ggn.global\dfs\ICT\DEV"
-    var server: String        // "ggn.global"
+    var uncPath: String       // "\\corp.example.com\dfs\ICT\DEV"
+    var server: String        // "corp.example.com"
     var isPinned: Bool
     var visitCount: Int
     var lastVisited: Date
@@ -262,7 +262,7 @@ struct UNCPath {
     var server: String
     var sharePath: String
     var mountPoint: String    // "/Volumes/NetPath_dfs"
-    var connectedAs: String   // "GGN\\jduplessis"
+    var connectedAs: String   // "CORP\\jsmith"
     var connectedAt: Date
     var isActive: Bool
 }
