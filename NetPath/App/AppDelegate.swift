@@ -77,9 +77,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .modelContainer(container)
 
-        let hostingView = NSHostingView(rootView: launcherView)
-        hostingView.layer?.backgroundColor = .clear
-        panel.contentView = hostingView
+        let hostingController = NSHostingController(rootView: launcherView)
+        hostingController.view.wantsLayer = true
+        hostingController.view.layer?.backgroundColor = .clear
+
+        // The panel itself must have no background
+        panel.contentView = hostingController.view
+
+        // Force the hosting view hierarchy to be transparent
+        func clearBackgrounds(of view: NSView) {
+            view.wantsLayer = true
+            view.layer?.backgroundColor = .clear
+            view.layer?.isOpaque = false
+            for sub in view.subviews { clearBackgrounds(of: sub) }
+        }
+
+        // Apply after layout
+        DispatchQueue.main.async {
+            if let cv = panel.contentView {
+                clearBackgrounds(of: cv)
+            }
+        }
+
         panel.makeKeyAndOrderFront(nil)
 
         if let screen = NSScreen.main {
