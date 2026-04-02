@@ -27,9 +27,9 @@ struct DirectoryListView: View {
 
             Divider().opacity(0.5)
 
-            // File list
+            // File list with full-area context menu
             ScrollView {
-                LazyVStack(spacing: 0) {
+                VStack(spacing: 0) {
                     ForEach(viewModel.sortedItems) { item in
                         FileRowView(item: item)
                             .onTapGesture(count: 2) {
@@ -40,11 +40,24 @@ struct DirectoryListView: View {
                                 FileContextMenu(item: item, viewModel: viewModel)
                             }
                     }
+
+                    // Empty space filler — makes the rest of the scroll area right-clickable
+                    Color.clear
+                        .frame(maxWidth: .infinity, minHeight: 100)
+                        .contentShape(Rectangle())
+                        .contextMenu {
+                            DirectoryContextMenu(viewModel: viewModel)
+                        }
                 }
-                .contextMenu {
-                    DirectoryContextMenu(viewModel: viewModel)
-                }
+                .frame(maxWidth: .infinity)
             }
+            .background(
+                Color.clear
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        DirectoryContextMenu(viewModel: viewModel)
+                    }
+            )
         }
     }
 

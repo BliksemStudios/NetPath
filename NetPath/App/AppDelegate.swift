@@ -148,16 +148,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             contentRect: NSRect(x: 0, y: 0,
                                 width: Design.Browser.minWindowWidth,
                                 height: Design.Browser.minWindowHeight),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
-        window.contentView = NSHostingView(rootView: browserView)
+
+        let hostingView = NSHostingView(rootView: browserView)
+        window.contentView = hostingView
         window.title = path.displayPath
-        window.titlebarAppearsTransparent = false
+        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: Design.Browser.minWindowWidth,
                                 height: Design.Browser.minWindowHeight)
+
+        // Ensure content clips to window's rounded corners
+        window.contentView?.wantsLayer = true
+        window.contentView?.layer?.masksToBounds = true
         window.center()
         window.makeKeyAndOrderFront(nil)
 
