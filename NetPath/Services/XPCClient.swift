@@ -10,10 +10,10 @@ struct MountResult {
 final class XPCClient: ObservableObject {
     static let shared = XPCClient()
 
-    @Published private(set) var isHelperConnected = false
-
     private init() {}
 
+    /// Mount a UNC path. Tries Kerberos first (zero-prompt for AD users),
+    /// falls back to explicit credentials if provided.
     func mount(path: UNCPath, username: String?, password: String?) async throws -> MountResult {
         guard let share = path.share else {
             throw XPCError.mountFailed(status: Int32(EINVAL))
@@ -21,13 +21,12 @@ final class XPCClient: ObservableObject {
 
         let subPath = path.components
 
-        // First: check if already mounted
-        if let existingMount = findExistingMount(server: path.server, share: share) {
-            print("[NetPath] Reusing existing mount at \(existingMount)")
-            return MountResult(mountPoint: existingMount, subPath: subPath)
+        // Check for existing mount first
+        if let existing = findExistingMount(server: path.server, share: share) {
+            print("[NetPath] Reusing existing mount at \(existing)")
+            return MountResult(mountPoint: existing, subPath: subPath)
         }
 
-        // Mount the share — try with system UI allowed so macOS handles Kerberos/AD
         let shareURL = "smb://\(path.server)/\(share)"
         let mountPoint = try await performMount(
             url: shareURL, username: username, password: password)
@@ -35,16 +34,13 @@ final class XPCClient: ObservableObject {
         return MountResult(mountPoint: mountPoint, subPath: subPath)
     }
 
-    /// Check if the share is already mounted (by Finder or previous NetPath mount)
     private func findExistingMount(server: String, share: String) -> String? {
-        // Check /Volumes for existing mount matching this share
         let fm = FileManager.default
         guard let volumes = fm.mountedVolumeURLs(
             includingResourceValuesForKeys: [.volumeURLForRemountingKey],
             options: []) else { return nil }
 
         for volume in volumes {
-            // Check the remount URL to match server/share
             if let values = try? volume.resourceValues(forKeys: [.volumeURLForRemountingKey]),
                let remountURL = values.volumeURLForRemounting {
                 let remountStr = remountURL.absoluteString.lowercased()
@@ -56,16 +52,11 @@ final class XPCClient: ObservableObject {
         }
 
         // Fallback: check by path name
-        let candidates = [
-            "/Volumes/\(share)",
-            "/Volumes/NetPath_\(share)",
-        ]
-        for candidate in candidates {
+        for candidate in ["/Volumes/\(share)", "/Volumes/NetPath_\(share)"] {
             if fm.fileExists(atPath: candidate) {
                 return candidate
             }
         }
-
         return nil
     }
 
@@ -77,28 +68,27 @@ final class XPCClient: ObservableObject {
                     return
                 }
 
-                let shareName = smbURL.pathComponents.filter { $0 != "/" }.joined(separator: "_")
-                let mountName = "NetPath_\(shareName.isEmpty ? smbURL.host ?? "unknown" : shareName)"
-                let mountPoint = "/Volumes/\(mountName)"
-
-                try? FileManager.default.createDirectory(
-                    atPath: mountPoint, withIntermediateDirectories: true)
-
                 let mountOptions = NSMutableDictionary()
                 mountOptions[kNetFSSoftMountKey] = true
                 mountOptions[kNetFSAllowSubMountsKey] = true
+                // MNT_DONTBROWSE prevents Finder from opening a window
+                mountOptions[kNetFSMountFlagsKey] = Int32(0x00100000)
 
                 let openOptions = NSMutableDictionary()
-                // Allow system UI for auth — handles Kerberos, AD, NTLM automatically
-                openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
+                // NoUI when we have explicit credentials, AllowUI for Kerberos
+                if username != nil {
+                    openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
+                } else {
+                    openOptions[kNAUIOptionKey] = kNAUIOptionAllowUI
+                }
 
                 var mountpoints: Unmanaged<CFArray>?
 
-                print("[NetPath] Mounting \(url) at \(mountPoint)")
+                print("[NetPath] Mounting \(url) (credentials: \(username != nil ? "explicit" : "Kerberos"))")
 
                 let status = NetFSMountURLSync(
                     smbURL as CFURL,
-                    URL(fileURLWithPath: mountPoint) as CFURL,
+                    nil,  // let system choose mount point
                     username as CFString?,
                     password as CFString?,
                     openOptions as CFMutableDictionary,
@@ -114,13 +104,12 @@ final class XPCClient: ObservableObject {
                        let first = points.first {
                         actualMountPoint = first
                     } else {
-                        actualMountPoint = mountPoint
+                        actualMountPoint = "/Volumes/\(smbURL.lastPathComponent)"
                     }
                     print("[NetPath] Mounted at: \(actualMountPoint)")
                     continuation.resume(returning: actualMountPoint)
                 } else {
-                    try? FileManager.default.removeItem(atPath: mountPoint)
-                    print("[NetPath] Mount failed with status: \(status)")
+                    print("[NetPath] Mount failed: \(status)")
                     continuation.resume(throwing: XPCError.mountFailed(status: status))
                 }
             }
@@ -128,18 +117,14 @@ final class XPCClient: ObservableObject {
     }
 
     func unmount(path: String) async -> Bool {
-        let result = Darwin.unmount(path, MNT_FORCE)
-        return result == 0
+        Darwin.unmount(path, MNT_FORCE) == 0
     }
 
     func listMountedShares() async -> [String] {
-        let fm = FileManager.default
-        guard let volumes = fm.mountedVolumeURLs(
-            includingResourceValuesForKeys: nil,
-            options: []) else { return [] }
-        return volumes
+        FileManager.default.mountedVolumeURLs(
+            includingResourceValuesForKeys: nil, options: [])?
             .map(\.path)
-            .filter { $0.contains("NetPath_") }
+            .filter { $0.contains("NetPath_") } ?? []
     }
 
     func resetConnection() {}
@@ -155,18 +140,14 @@ enum XPCError: Error, LocalizedError {
             return "Could not connect to NetPath Helper."
         case .mountFailed(let status):
             switch status {
-            case Int32(EAUTH), -5045:
+            case Int32(EAUTH), -5045, 80:
                 return "Authentication failed. Please check your credentials."
             case Int32(ENOENT):
                 return "Share not found. Check the path and try again."
             case Int32(ETIMEDOUT):
                 return "Connection timed out. The server may be unreachable."
-            case -6600:
-                return "Server not found. Check the hostname and try again."
-            case 80:
-                return "Authentication required."
-            case Int32(EPERM), 13:
-                return "Permission denied. Check your credentials."
+            case -128:
+                return "Authentication was cancelled."
             default:
                 return "Mount failed (error \(status)). Please try again."
             }
@@ -175,9 +156,8 @@ enum XPCError: Error, LocalizedError {
 
     var isAuthError: Bool {
         if case .mountFailed(let status) = self {
-            return status == Int32(EAUTH) || status == -5045 || status == -5046
-                || status == -5999 || status == 80
-                || status == Int32(EPERM) || status == 13
+            return status == Int32(EAUTH) || status == -5045 || status == 80
+                || status == Int32(EPERM) || status == 13 || status == -128
         }
         return false
     }

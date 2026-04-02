@@ -54,33 +54,33 @@ final class LauncherViewModel {
     func connect() async {
         guard let path = conversionService.parse(inputText) else { return }
 
-        // Check for stored credentials
-        let credential = try? KeychainService.shared.getCredential(for: path.server)
-
-        // If no stored credentials, go straight to credential prompt
-        guard let credential else {
-            connectionState = .needsCredentials(server: path.server)
-            return
-        }
-
         connectionState = .connecting(server: path.server)
 
-        let username = conversionService.buildCredentialString(
-            domain: credential.domain, username: credential.username)
-        let password = credential.password
+        // Step 1: Try with stored credentials if available
+        if let credential = try? KeychainService.shared.getCredential(for: path.server) {
+            let username = conversionService.buildCredentialString(
+                domain: credential.domain, username: credential.username)
+            do {
+                let result = try await xpcClient.mount(
+                    path: path, username: username, password: credential.password)
+                recordVisit(path: path)
+                connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
+                return
+            } catch {
+                // Stored credentials failed — continue to Kerberos
+                print("[NetPath] Stored credentials failed, trying Kerberos...")
+            }
+        }
 
+        // Step 2: Try Kerberos (no credentials — uses AD login)
         do {
             let result = try await xpcClient.mount(
-                path: path, username: username, password: password)
-
+                path: path, username: nil, password: nil)
             recordVisit(path: path)
             connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
-        } catch let error as XPCError where error.isAuthError {
-            // Stored credentials are bad — prompt for new ones
-            connectionState = .needsCredentials(server: path.server)
         } catch {
-            xpcClient.resetConnection()
-            connectionState = .error(message: error.localizedDescription)
+            // Kerberos failed — prompt for credentials
+            connectionState = .needsCredentials(server: path.server)
         }
     }
 
