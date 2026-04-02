@@ -55,28 +55,29 @@ final class LauncherViewModel {
         guard let path = conversionService.parse(inputText) else { return }
         let smbURL = conversionService.toSMBURL(path)
 
-        connectionState = .connecting(server: path.server)
-
+        // Check for stored credentials
         let credential = try? KeychainService.shared.getCredential(for: path.server)
 
-        do {
-            let username: String?
-            let password: String?
-            if let credential {
-                username = conversionService.buildCredentialString(
-                    domain: credential.domain, username: credential.username)
-                password = credential.password
-            } else {
-                username = nil
-                password = nil
-            }
+        // If no stored credentials, go straight to credential prompt
+        guard let credential else {
+            connectionState = .needsCredentials(server: path.server)
+            return
+        }
 
+        connectionState = .connecting(server: path.server)
+
+        let username = conversionService.buildCredentialString(
+            domain: credential.domain, username: credential.username)
+        let password = credential.password
+
+        do {
             let mountPoint = try await xpcClient.mount(
                 url: smbURL, username: username, password: password)
 
             recordVisit(path: path)
             connectionState = .connected(mountPoint: mountPoint)
         } catch let error as XPCError where error.isAuthError {
+            // Stored credentials are bad — prompt for new ones
             connectionState = .needsCredentials(server: path.server)
         } catch {
             xpcClient.resetConnection()

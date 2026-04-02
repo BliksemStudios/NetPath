@@ -58,6 +58,7 @@ final class XPCClient: ObservableObject {
                     continuation.resume(returning: actualMountPoint)
                 } else {
                     try? FileManager.default.removeItem(atPath: mountPoint)
+                    print("[NetPath] NetFS mount failed with status: \(status) for \(url)")
                     continuation.resume(throwing: XPCError.mountFailed(status: status))
                 }
             }
@@ -111,7 +112,10 @@ enum XPCError: Error, LocalizedError {
 
     var isAuthError: Bool {
         if case .mountFailed(let status) = self {
-            return status == Int32(EAUTH) || status == -5045
+            // EAUTH, ENETFSPWDNEEDSCHANGE, and common SMB auth error codes
+            return status == Int32(EAUTH) || status == -5045 || status == -5046
+                || status == -5999 || status == 80 // NT_STATUS_LOGON_FAILURE mapped
+                || status == Int32(EPERM) || status == 13 // Permission denied
         }
         return false
     }
