@@ -77,7 +77,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .modelContainer(container)
 
-        panel.contentView = NSHostingView(rootView: launcherView)
+        let hostingView = NSHostingView(rootView: launcherView)
+        hostingView.layer?.backgroundColor = .clear
+        panel.contentView = hostingView
         panel.makeKeyAndOrderFront(nil)
 
         if let screen = NSScreen.main {

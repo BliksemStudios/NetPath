@@ -148,9 +148,13 @@ struct LauncherView: View {
                 }
             }
         }
-        .background(.ultraThinMaterial)
+        .background(
+            RoundedRectangle(cornerRadius: Design.Launcher.cornerRadius)
+                .fill(.ultraThinMaterial)
+        )
         .clipShape(RoundedRectangle(cornerRadius: Design.Launcher.cornerRadius))
         .frame(width: Design.Launcher.width)
+        .padding(1) // prevent sub-pixel bleed at edges
         .shadow(color: .black.opacity(0.3), radius: 20, y: 8)
         .onAppear {
             if viewModel == nil {
