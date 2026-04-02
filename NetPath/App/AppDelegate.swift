@@ -7,9 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var launcherPanel: LauncherPanel?
     private let hotkeyService = HotkeyService.shared
+    private var browserWindows: [NSWindow] = []
 
     var modelContainer: ModelContainer?
-    var onBrowse: ((String, UNCPath) -> Void)?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -20,13 +20,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyService.unregister()
     }
 
+    // MARK: - Status Bar
+
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
             button.image = NSImage(systemSymbolName: "externaldrive.connected.to.line.below",
                                    accessibilityDescription: "NetPath")
-            button.action = #selector(statusItemClicked)
-            button.target = self
         }
 
         let menu = NSMenu()
@@ -39,9 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.menu = menu
     }
 
-    @objc private func statusItemClicked() {
-        showLauncher()
-    }
+    // MARK: - Hotkey
 
     private func setupHotkey() {
         hotkeyService.onHotkeyPressed = { [weak self] in
@@ -49,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotkeyService.register()
     }
+
+    // MARK: - Launcher
 
     @objc func showLauncher() {
         if launcherPanel == nil {
@@ -59,7 +59,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let launcherView = LauncherView(
             onBrowse: { [weak self] mountPoint, path in
-                self?.onBrowse?(mountPoint, path)
+                self?.openBrowser(mountPoint: mountPoint, path: path)
             },
             onDismiss: { [weak self] in
                 self?.hideLauncher()
@@ -91,7 +91,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Browser Window
+
+    private func openBrowser(mountPoint: String, path: UNCPath) {
+        guard let container = modelContainer else { return }
+
+        let viewModel = BrowserViewModel(
+            mountPoint: mountPoint,
+            uncPath: path,
+            modelContext: container.mainContext
+        )
+
+        let browserView = BrowserView(viewModel: viewModel)
+            .modelContainer(container)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0,
+                                width: Design.Browser.minWindowWidth,
+                                height: Design.Browser.minWindowHeight),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: browserView)
+        window.title = path.displayPath
+        window.titlebarAppearsTransparent = false
+        window.isReleasedWhenClosed = false
+        window.minSize = NSSize(width: Design.Browser.minWindowWidth,
+                                height: Design.Browser.minWindowHeight)
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+
+        // Activate the app so the window comes to front
+        NSApp.activate(ignoringOtherApps: true)
+
+        browserWindows.append(window)
+    }
+
     @objc private func openSettings() {
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }
