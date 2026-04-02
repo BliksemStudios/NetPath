@@ -7,22 +7,30 @@ struct StatusBarView: View {
     let isConnected: Bool
 
     var body: some View {
-        HStack {
-            Text("\(itemCount) items")
+        HStack(spacing: 0) {
+            Text("\(itemCount) item\(itemCount == 1 ? "" : "s")")
                 .font(Design.Fonts.statusBar)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
+
             Spacer()
+
             HStack(spacing: 6) {
                 Circle()
                     .fill(isConnected ? Design.Colors.connectedGreen : Design.Colors.errorRed)
                     .frame(width: 6, height: 6)
-                Text("\(username) — \(server)")
-                    .font(Design.Fonts.statusBar)
-                    .foregroundStyle(.secondary)
+
+                if !username.isEmpty {
+                    Text("\(username) — \(server)")
+                        .font(Design.Fonts.statusBar)
+                        .foregroundStyle(.tertiary)
+                } else {
+                    Text(server)
+                        .font(Design.Fonts.statusBar)
+                        .foregroundStyle(.tertiary)
+                }
             }
         }
         .padding(.horizontal, 16)
         .frame(height: Design.Browser.statusBarHeight)
-        .background(.bar)
     }
 }

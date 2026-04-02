@@ -29,6 +29,7 @@
 		6E3F7121902632E113161EA0 /* PathEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4503D03E675494489140B0EE /* PathEntry.swift */; };
 		723257EBCE75870111394042 /* HistorySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8195465AA2533C8F944EF7 /* HistorySettingsView.swift */; };
 		7499E9A4709F14E0B870D776 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E4C7D72B8AF53521BB0427 /* main.swift */; };
+		7CED5760696748C162650678 /* FileContextMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9862B55F9FF5CEC0B0FE027D /* FileContextMenu.swift */; };
 		87298AEA39D71351747B2CF0 /* LauncherPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A2827FD0F41293F5E0487F /* LauncherPanel.swift */; };
 		88E60C7A09D5AB999117A3D2 /* UNCPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD9F94883EBA6C175AD407E1 /* UNCPath.swift */; };
 		9650A6D84361D3367EEE9795 /* NetPathHelperProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4EE628A026C44ED2F4E8CBA /* NetPathHelperProtocol.swift */; };
@@ -118,6 +119,7 @@
 		927EF3B0E24CF26A3B4D4106 /* NetPath.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NetPath.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		933400E335BBD80F99A8AF50 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		97A2BF9275873637098FA77D /* KeychainServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainServiceTests.swift; sourceTree = "<group>"; };
+		9862B55F9FF5CEC0B0FE027D /* FileContextMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileContextMenu.swift; sourceTree = "<group>"; };
 		9AD5389FCC39F67150CA3F1A /* ConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionState.swift; sourceTree = "<group>"; };
 		A4EE628A026C44ED2F4E8CBA /* NetPathHelperProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetPathHelperProtocol.swift; sourceTree = "<group>"; };
 		A4FB85EAD81C8747F30E6B82 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 				37F475BED4267C78163675CF /* BrowserView.swift */,
 				28B96A0C78AC7DABF8533B20 /* DirectoryGridView.swift */,
 				66E1A0931B578F26F85297EC /* DirectoryListView.swift */,
+				9862B55F9FF5CEC0B0FE027D /* FileContextMenu.swift */,
 				FDC913C0C6ED483CDAA5CCB0 /* FileRowView.swift */,
 				D9A9B560EC4EDE5C2294AD9D /* SidebarView.swift */,
 				3BB363FDFF4E71CF212CE34F /* StatusBarView.swift */,
@@ -454,6 +457,7 @@
 				B4DDB4D3B46BA108FABA3AFF /* DirectoryGridView.swift in Sources */,
 				065F987C70BA54DE07F0D9B1 /* DirectoryListView.swift in Sources */,
 				23FDA4321497DA04C702F283 /* Extensions.swift in Sources */,
+				7CED5760696748C162650678 /* FileContextMenu.swift in Sources */,
 				D964E40FE940241962ABEAE4 /* FileItem.swift in Sources */,
 				11CB4CA7945E8892F1EA325C /* FileRowView.swift in Sources */,
 				A8F3F4A710683F6A08FAB8F7 /* FileSystemService.swift in Sources */,

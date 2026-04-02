@@ -6,72 +6,117 @@ struct AddressBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Button(action: { viewModel.goBack() }) {
-                    Image(systemName: "chevron.left").frame(width: 28, height: 28)
+            // Navigation buttons
+            HStack(spacing: 2) {
+                navButton(icon: "chevron.left", enabled: viewModel.canGoBack) {
+                    viewModel.goBack()
                 }
-                .buttonStyle(.plain)
-                .disabled(!viewModel.canGoBack)
-                .foregroundStyle(viewModel.canGoBack ? .primary : .tertiary)
-
-                Button(action: { viewModel.goForward() }) {
-                    Image(systemName: "chevron.right").frame(width: 28, height: 28)
+                navButton(icon: "chevron.right", enabled: viewModel.canGoForward) {
+                    viewModel.goForward()
                 }
-                .buttonStyle(.plain)
-                .disabled(!viewModel.canGoForward)
-                .foregroundStyle(viewModel.canGoForward ? .primary : .tertiary)
+                navButton(icon: "chevron.up", enabled: viewModel.currentPath.parentPath != nil) {
+                    viewModel.goUp()
+                }
             }
 
-            if isEditing {
-                TextField("Path", text: $viewModel.addressBarText)
-                    .font(Design.Fonts.pathMono)
-                    .textFieldStyle(.plain)
-                    .onSubmit {
-                        viewModel.navigateToAddressBar()
-                        isEditing = false
-                    }
-                    .onExitCommand { isEditing = false }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 2) {
-                        Text("\\\\")
-                            .font(Design.Fonts.pathMono)
-                            .foregroundStyle(.secondary)
-                        ForEach(Array(viewModel.breadcrumbs.enumerated()), id: \.element.id) { index, crumb in
-                            if index > 0 {
-                                Text("›").font(Design.Fonts.pathMono).foregroundStyle(.tertiary).padding(.horizontal, 2)
-                            }
-                            Button(crumb.label) { viewModel.navigateTo(path: crumb.path) }
+            // Path bar
+            Group {
+                if isEditing {
+                    TextField("Path", text: $viewModel.addressBarText)
+                        .font(Design.Fonts.pathMono)
+                        .textFieldStyle(.plain)
+                        .onSubmit {
+                            viewModel.navigateToAddressBar()
+                            isEditing = false
+                        }
+                        .onExitCommand { isEditing = false }
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 0) {
+                            Text("\\\\")
+                                .font(Design.Fonts.pathMono)
+                                .foregroundStyle(.tertiary)
+
+                            ForEach(Array(viewModel.breadcrumbs.enumerated()), id: \.element.id) { index, crumb in
+                                if index > 0 {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundStyle(.quaternary)
+                                        .padding(.horizontal, 4)
+                                }
+
+                                Button(crumb.label) {
+                                    viewModel.navigateTo(path: crumb.path)
+                                }
                                 .buttonStyle(.plain)
                                 .font(Design.Fonts.pathMono)
-                                .foregroundStyle(index == viewModel.breadcrumbs.count - 1 ? .primary : Design.Colors.accent)
+                                .foregroundStyle(
+                                    index == viewModel.breadcrumbs.count - 1
+                                        ? .primary
+                                        : Design.Colors.accent
+                                )
+                                .padding(.vertical, 3)
+                                .padding(.horizontal, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(index == viewModel.breadcrumbs.count - 1
+                                              ? Design.Colors.accent.opacity(0.1)
+                                              : Color.clear)
+                                )
+                            }
                         }
+                        .padding(.horizontal, 4)
                     }
+                    .onTapGesture(count: 2) { isEditing = true }
+                    .contentShape(Rectangle())
                 }
-                .onTapGesture(count: 2) { isEditing = true }
-                .contentShape(Rectangle())
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(.quaternary.opacity(0.5))
+            )
+
+            // Refresh
+            navButton(icon: "arrow.clockwise", enabled: true) {
+                viewModel.refresh()
             }
 
-            Spacer()
-
-            HStack(spacing: 2) {
-                Button(action: { viewModel.viewMode = .list }) {
-                    Image(systemName: "list.bullet").frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(viewModel.viewMode == .list ? Design.Colors.accent : .secondary)
-
-                Button(action: { viewModel.viewMode = .grid }) {
-                    Image(systemName: "square.grid.2x2").frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(viewModel.viewMode == .grid ? Design.Colors.accent : .secondary)
+            // View toggle
+            HStack(spacing: 0) {
+                viewToggleButton(icon: "list.bullet", mode: .list)
+                viewToggleButton(icon: "square.grid.2x2", mode: .grid)
             }
-            .padding(2)
-            .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary))
+            .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.5)))
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(.bar)
+    }
+
+    private func navButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .foregroundStyle(enabled ? .secondary : .quaternary)
+    }
+
+    private func viewToggleButton(icon: String, mode: ViewMode) -> some View {
+        Button(action: { viewModel.viewMode = mode }) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(viewModel.viewMode == mode ? Design.Colors.accent : .secondary)
+        .background(
+            RoundedRectangle(cornerRadius: 5)
+                .fill(viewModel.viewMode == mode ? Design.Colors.accent.opacity(0.12) : Color.clear)
+        )
     }
 }

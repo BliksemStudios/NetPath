@@ -55,7 +55,7 @@ The built app will be in `DerivedData/NetPath-*/Build/Products/Release/NetPath.a
 
 ### Download
 
-Download the latest DMG from [GitHub Releases](https://github.com/BliksemStudios/NetPath/releases).
+Download the latest DMG from [GitHub Releases](https://github.com/BliksemStudios/NetPath/releases). A new release is automatically built when a version tag (`v*`) is pushed.
 
 ## Usage
 

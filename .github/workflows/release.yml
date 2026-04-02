@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: macos-15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode*.app | sort -V | tail -1)"
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+
+      - name: Generate Project
+        run: xcodegen generate
+
+      - name: Build Release
+        run: |
+          xcodebuild -scheme NetPath -configuration Release \
+            -archivePath build/NetPath.xcarchive archive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Create App Bundle
+        run: |
+          mkdir -p build/dmg
+          cp -R build/NetPath.xcarchive/Products/Applications/NetPath.app build/dmg/
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "NetPath" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            build/NetPath-${{ github.ref_name }}.dmg
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/NetPath-${{ github.ref_name }}.dmg
+          generate_release_notes: true
+          draft: false

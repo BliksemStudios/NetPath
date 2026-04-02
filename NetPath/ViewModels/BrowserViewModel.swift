@@ -165,8 +165,71 @@ final class BrowserViewModel {
         NSWorkspace.shared.activateFileViewerSelecting([item.path])
     }
 
+    func openWith(_ item: FileItem) {
+        // Open the "Open With" panel via NSWorkspace
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.prompt = "Open With"
+        if panel.runModal() == .OK, let appURL = panel.url {
+            NSWorkspace.shared.open([item.path], withApplicationAt: appURL,
+                                     configuration: NSWorkspace.OpenConfiguration())
+        }
+    }
+
+    func getFileInfo(_ item: FileItem) {
+        // Reveal info in Finder (Cmd+I equivalent)
+        let source = "tell application \"Finder\" to open information window of (POSIX file \"\(item.path.path)\" as alias)"
+        if let script = NSAppleScript(source: source) {
+            var error: NSDictionary?
+            script.executeAndReturnError(&error)
+        }
+    }
+
+    func copyFileName(_ item: FileItem) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(item.name, forType: .string)
+    }
+
+    func copyRelativePath(_ item: FileItem) {
+        let relative = currentPath.components.joined(separator: "\\") +
+            (currentPath.components.isEmpty ? "" : "\\") + item.name
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(relative, forType: .string)
+    }
+
+    func moveToTrash(_ item: FileItem) {
+        do {
+            try FileManager.default.trashItem(at: item.path, resultingItemURL: nil)
+            loadDirectory()
+        } catch {
+            errorMessage = "Could not move to trash: \(error.localizedDescription)"
+        }
+    }
+
+    func newFolder() {
+        var localPath = URL(fileURLWithPath: mountPoint)
+        for component in currentPath.components {
+            localPath.appendPathComponent(component)
+        }
+        let newFolderURL = localPath.appendingPathComponent("untitled folder")
+        do {
+            try FileManager.default.createDirectory(at: newFolderURL, withIntermediateDirectories: false)
+            loadDirectory()
+        } catch {
+            errorMessage = "Could not create folder: \(error.localizedDescription)"
+        }
+    }
+
     func refresh() {
         loadDirectory()
+    }
+
+    func copyCurrentDirectoryUNC() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(currentPath.uncString, forType: .string)
     }
 
     private func pushHistory(_ path: UNCPath) {
