@@ -3,7 +3,7 @@ import Foundation
 enum ConnectionState: Equatable, Sendable {
     case idle
     case connecting(server: String)
-    case connected(mountPoint: String)
+    case connected(mountPoint: String, subPath: [String])
     case error(message: String)
     case needsCredentials(server: String)
 
@@ -18,8 +18,13 @@ enum ConnectionState: Equatable, Sendable {
     }
 
     var mountPoint: String? {
-        if case .connected(let path) = self { return path }
+        if case .connected(let path, _) = self { return path }
         return nil
+    }
+
+    var subPath: [String] {
+        if case .connected(_, let sub) = self { return sub }
+        return []
     }
 
     var errorMessage: String? {

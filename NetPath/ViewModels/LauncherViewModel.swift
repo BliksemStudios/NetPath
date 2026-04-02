@@ -53,7 +53,6 @@ final class LauncherViewModel {
 
     func connect() async {
         guard let path = conversionService.parse(inputText) else { return }
-        let smbURL = conversionService.toSMBURL(path)
 
         // Check for stored credentials
         let credential = try? KeychainService.shared.getCredential(for: path.server)
@@ -71,11 +70,11 @@ final class LauncherViewModel {
         let password = credential.password
 
         do {
-            let mountPoint = try await xpcClient.mount(
-                url: smbURL, username: username, password: password)
+            let result = try await xpcClient.mount(
+                path: path, username: username, password: password)
 
             recordVisit(path: path)
-            connectionState = .connected(mountPoint: mountPoint)
+            connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
         } catch let error as XPCError where error.isAuthError {
             // Stored credentials are bad — prompt for new ones
             connectionState = .needsCredentials(server: path.server)
@@ -88,7 +87,6 @@ final class LauncherViewModel {
     func connectWithCredentials(domain: String, username: String,
                                  password: String, saveToKeychain: Bool) async {
         guard let path = conversionService.parse(inputText) else { return }
-        let smbURL = conversionService.toSMBURL(path)
 
         connectionState = .connecting(server: path.server)
 
@@ -96,8 +94,8 @@ final class LauncherViewModel {
             domain: domain, username: username)
 
         do {
-            let mountPoint = try await xpcClient.mount(
-                url: smbURL, username: fullUsername, password: password)
+            let result = try await xpcClient.mount(
+                path: path, username: fullUsername, password: password)
 
             if saveToKeychain {
                 try? KeychainService.shared.saveCredential(
@@ -107,7 +105,7 @@ final class LauncherViewModel {
             }
 
             recordVisit(path: path)
-            connectionState = .connected(mountPoint: mountPoint)
+            connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
         } catch let error as XPCError where error.isAuthError {
             connectionState = .error(message: "Authentication failed. Check your credentials.")
         } catch {

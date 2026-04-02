@@ -1,6 +1,11 @@
 import Foundation
 import NetFS
 
+struct MountResult {
+    let mountPoint: String    // e.g. "/Volumes/NetPath_dfs"
+    let subPath: [String]     // e.g. ["ict", "dev"] — subdirectories to navigate into
+}
+
 @MainActor
 final class XPCClient: ObservableObject {
     static let shared = XPCClient()
@@ -9,9 +14,24 @@ final class XPCClient: ObservableObject {
 
     private init() {}
 
-    func mount(url: String, username: String?, password: String?) async throws -> String {
-        // Mount directly using NetFS — works when running unsandboxed (dev builds)
-        // In production sandboxed builds, this would go through the XPC helper
+    /// Mount a UNC path. Only mounts the share root (server/share),
+    /// returns the mount point + any remaining subdirectory components.
+    func mount(path: UNCPath, username: String?, password: String?) async throws -> MountResult {
+        guard let share = path.share else {
+            throw XPCError.mountFailed(status: Int32(EINVAL))
+        }
+
+        // Build the share-root SMB URL (no subdirectories)
+        let shareURL = "smb://\(path.server)/\(share)"
+        let subPath = path.components  // everything after the share
+
+        let mountPoint = try await performMount(
+            url: shareURL, username: username, password: password)
+
+        return MountResult(mountPoint: mountPoint, subPath: subPath)
+    }
+
+    private func performMount(url: String, username: String?, password: String?) async throws -> String {
         return try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 guard let smbURL = URL(string: url) else {
@@ -28,6 +48,7 @@ final class XPCClient: ObservableObject {
 
                 let mountOptions = NSMutableDictionary()
                 mountOptions[kNetFSSoftMountKey] = true
+                mountOptions[kNetFSAllowSubMountsKey] = true
 
                 let openOptions = NSMutableDictionary()
                 if username == nil && password == nil {
@@ -36,6 +57,8 @@ final class XPCClient: ObservableObject {
                 openOptions[kNAUIOptionKey] = kNAUIOptionNoUI
 
                 var mountpoints: Unmanaged<CFArray>?
+
+                print("[NetPath] Mounting \(url) at \(mountPoint)")
 
                 let status = NetFSMountURLSync(
                     smbURL as CFURL,
@@ -47,6 +70,8 @@ final class XPCClient: ObservableObject {
                     &mountpoints
                 )
 
+                print("[NetPath] Mount status: \(status)")
+
                 if status == 0 {
                     let actualMountPoint: String
                     if let points = mountpoints?.takeRetainedValue() as? [String],
@@ -55,10 +80,11 @@ final class XPCClient: ObservableObject {
                     } else {
                         actualMountPoint = mountPoint
                     }
+                    print("[NetPath] Mounted at: \(actualMountPoint)")
                     continuation.resume(returning: actualMountPoint)
                 } else {
                     try? FileManager.default.removeItem(atPath: mountPoint)
-                    print("[NetPath] NetFS mount failed with status: \(status) for \(url)")
+                    print("[NetPath] Mount failed with status: \(status)")
                     continuation.resume(throwing: XPCError.mountFailed(status: status))
                 }
             }
@@ -71,7 +97,6 @@ final class XPCClient: ObservableObject {
     }
 
     func listMountedShares() async -> [String] {
-        // List volumes mounted by NetPath
         let fm = FileManager.default
         guard let volumes = fm.mountedVolumeURLs(
             includingResourceValuesForKeys: nil,
@@ -81,9 +106,7 @@ final class XPCClient: ObservableObject {
             .filter { $0.contains("NetPath_") }
     }
 
-    func resetConnection() {
-        // No persistent connection in direct mode
-    }
+    func resetConnection() {}
 }
 
 enum XPCError: Error, LocalizedError {
@@ -104,6 +127,10 @@ enum XPCError: Error, LocalizedError {
                 return "Connection timed out. The server may be unreachable."
             case -6600:
                 return "Server not found. Check the hostname and try again."
+            case 80:
+                return "Authentication required."
+            case Int32(EPERM), 13:
+                return "Permission denied. Check your credentials."
             default:
                 return "Mount failed (error \(status)). Please try again."
             }
@@ -112,10 +139,9 @@ enum XPCError: Error, LocalizedError {
 
     var isAuthError: Bool {
         if case .mountFailed(let status) = self {
-            // EAUTH, ENETFSPWDNEEDSCHANGE, and common SMB auth error codes
             return status == Int32(EAUTH) || status == -5045 || status == -5046
-                || status == -5999 || status == 80 // NT_STATUS_LOGON_FAILURE mapped
-                || status == Int32(EPERM) || status == 13 // Permission denied
+                || status == -5999 || status == 80
+                || status == Int32(EPERM) || status == 13
         }
         return false
     }
