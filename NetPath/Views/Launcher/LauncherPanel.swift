@@ -18,7 +18,10 @@ final class LauncherPanel: NSPanel {
         level = .floating
         isOpaque = false
         backgroundColor = .clear
-        hasShadow = true
+        // Disable the panel's built-in shadow — it draws a rectangular shadow
+        // that doesn't respect the SwiftUI rounded clip shape.
+        // The shadow is handled by SwiftUI's .shadow() on LauncherView instead.
+        hasShadow = false
         titleVisibility = .hidden
         titlebarAppearsTransparent = true
         isMovableByWindowBackground = true
