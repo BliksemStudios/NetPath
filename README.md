@@ -1,6 +1,7 @@
 # NetPath
 
 [![Build & Test](https://github.com/BliksemStudios/NetPath/actions/workflows/build.yml/badge.svg)](https://github.com/BliksemStudios/NetPath/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/BliksemStudios/NetPath)](https://github.com/BliksemStudios/NetPath/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform: macOS 14+](https://img.shields.io/badge/Platform-macOS%2014+-black.svg)](https://developer.apple.com/macos/)
 
