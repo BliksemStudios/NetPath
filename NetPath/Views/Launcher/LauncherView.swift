@@ -13,6 +13,7 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let viewModel {
+                // Search input row
                 HStack(spacing: 12) {
                     Image(systemName: "network")
                         .foregroundStyle(Design.Colors.accent)
@@ -27,6 +28,18 @@ struct LauncherView: View {
                         .textFieldStyle(.plain)
                         .focused($isInputFocused)
                         .onSubmit { handleSubmit() }
+                        .onKeyPress(.upArrow) {
+                            viewModel.moveSelectionUp()
+                            return .handled
+                        }
+                        .onKeyPress(.downArrow) {
+                            viewModel.moveSelectionDown()
+                            return .handled
+                        }
+                        .onKeyPress(.escape) {
+                            onDismiss?()
+                            return .handled
+                        }
 
                     if viewModel.connectionState.isConnecting {
                         LoadingIndicator()
@@ -89,8 +102,8 @@ struct LauncherView: View {
                     .padding(.bottom, 8)
                 }
 
-                // Suggestions
-                if !viewModel.suggestions.isEmpty {
+                // Suggestions dropdown
+                if !viewModel.suggestions.isEmpty && !showCredentialSheet {
                     Divider().padding(.horizontal, 8).opacity(0.3)
 
                     VStack(spacing: 0) {
@@ -99,14 +112,17 @@ struct LauncherView: View {
                                 entry: entry,
                                 isSelected: index == viewModel.selectedSuggestionIndex
                             )
-                            .onTapGesture { viewModel.selectSuggestion(entry) }
+                            .onTapGesture {
+                                viewModel.selectSuggestion(entry)
+                                handleSubmit()
+                            }
                         }
                     }
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)
                 }
 
-                // Inline credential form (shown instead of a sheet to avoid panel dismiss issues)
+                // Inline credential form
                 if showCredentialSheet,
                    case .needsCredentials(let server) = viewModel.connectionState {
                     Divider().padding(.horizontal, 8).opacity(0.3)
@@ -173,7 +189,6 @@ struct LauncherView: View {
         onDismiss?()
     }
 
-    /// Tell the panel not to dismiss when it loses key status (e.g. during credential entry)
     private func setPanelPreventDismiss(_ prevent: Bool) {
         if let panel = NSApp.windows.first(where: { $0 is LauncherPanel }) as? LauncherPanel {
             panel.preventDismiss = prevent

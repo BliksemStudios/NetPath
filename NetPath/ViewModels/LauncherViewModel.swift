@@ -12,12 +12,17 @@ final class LauncherViewModel {
     var suggestions: [PathEntry] = []
     var selectedSuggestionIndex: Int = -1
 
+    /// Set to true when arrow keys change selection — prevents onInputChanged from resetting index
+    private var selectionDrivenChange = false
+
     private let conversionService = PathConversionService()
     private let modelContext: ModelContext
     private let xpcClient = XPCClient.shared
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        // Load suggestions immediately so they appear when launcher opens
+        updateSuggestions()
     }
 
     private func onInputChanged() {
@@ -28,8 +33,13 @@ final class LauncherViewModel {
         } else {
             convertedPreview = nil
         }
-        updateSuggestions()
-        selectedSuggestionIndex = -1
+
+        if selectionDrivenChange {
+            selectionDrivenChange = false
+        } else {
+            updateSuggestions()
+            selectedSuggestionIndex = -1
+        }
     }
 
     func updateSuggestions() {
@@ -42,7 +52,6 @@ final class LauncherViewModel {
             return
         }
 
-        // Sort: pinned first, then by visit count, then recency
         entries.sort { a, b in
             if a.isPinned != b.isPinned { return a.isPinned }
             if a.visitCount != b.visitCount { return a.visitCount > b.visitCount }
@@ -67,7 +76,6 @@ final class LauncherViewModel {
                 connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
                 return
             } catch {
-                // Stored credentials failed — continue to Kerberos
                 print("[NetPath] Stored credentials failed, trying Kerberos...")
             }
         }
@@ -79,7 +87,6 @@ final class LauncherViewModel {
             recordVisit(path: path)
             connectionState = .connected(mountPoint: result.mountPoint, subPath: result.subPath)
         } catch {
-            // Kerberos failed — prompt for credentials
             connectionState = .needsCredentials(server: path.server)
         }
     }
@@ -114,18 +121,29 @@ final class LauncherViewModel {
     }
 
     func selectSuggestion(_ entry: PathEntry) {
+        selectionDrivenChange = true
         inputText = entry.uncPath
     }
 
     func moveSelectionUp() {
-        if selectedSuggestionIndex > 0 {
+        if suggestions.isEmpty { return }
+        if selectedSuggestionIndex <= 0 {
+            selectedSuggestionIndex = 0
+        } else {
             selectedSuggestionIndex -= 1
         }
+        // Auto-fill text field with selected suggestion
+        selectionDrivenChange = true
+        inputText = suggestions[selectedSuggestionIndex].uncPath
     }
 
     func moveSelectionDown() {
+        if suggestions.isEmpty { return }
         if selectedSuggestionIndex < suggestions.count - 1 {
             selectedSuggestionIndex += 1
+            // Auto-fill text field with selected suggestion
+            selectionDrivenChange = true
+            inputText = suggestions[selectedSuggestionIndex].uncPath
         }
     }
 
@@ -136,6 +154,7 @@ final class LauncherViewModel {
     }
 
     func reset() {
+        selectionDrivenChange = true
         inputText = ""
         connectionState = .idle
         suggestions = []

@@ -9,6 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hotkeyService = HotkeyService.shared
     private var browserWindows: [NSWindow] = []
 
+    private static let lastPathKey = "lastBrowsedPath"
+
     var modelContainer: ModelContainer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -31,6 +33,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         menu.addItem(NSMenuItem(title: "Open NetPath", action: #selector(showLauncher), keyEquivalent: ""))
+
+        let lastSessionItem = NSMenuItem(title: "Open Last Session", action: #selector(openLastSession), keyEquivalent: "L")
+        lastSessionItem.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(lastSessionItem)
+
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ","))
         menu.addItem(.separator())
@@ -77,6 +84,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let y = screenFrame.midY + 100
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
+
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func hideLauncher() {
@@ -91,10 +100,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Last Session
+
+    @objc private func openLastSession() {
+        guard let lastPath = UserDefaults.standard.string(forKey: Self.lastPathKey),
+              let path = UNCPath(from: lastPath) else {
+            // No last session — just open the launcher
+            showLauncher()
+            return
+        }
+
+        // Connect and open browser
+        Task {
+            let xpc = XPCClient.shared
+            do {
+                let result = try await xpc.mount(path: path, username: nil, password: nil)
+                openBrowser(mountPoint: result.mountPoint, path: path)
+            } catch {
+                // Mount failed — open launcher with the path pre-filled
+                showLauncher()
+                // User will see the launcher and can type/paste the path
+            }
+        }
+    }
+
     // MARK: - Browser Window
 
     private func openBrowser(mountPoint: String, path: UNCPath) {
         guard let container = modelContainer else { return }
+
+        // Save as last browsed path
+        UserDefaults.standard.set(path.uncString, forKey: Self.lastPathKey)
 
         let viewModel = BrowserViewModel(
             mountPoint: mountPoint,
@@ -122,7 +158,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.center()
         window.makeKeyAndOrderFront(nil)
 
-        // Activate the app so the window comes to front
         NSApp.activate(ignoringOtherApps: true)
 
         browserWindows.append(window)
