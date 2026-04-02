@@ -77,53 +77,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         .modelContainer(container)
 
-        // Architecture: NSVisualEffectView (rounded, provides material blur)
-        //              └── NSHostingView (transparent SwiftUI content on top)
-        // This avoids NSHostingView's opaque background bleeding at corners.
+        // Architecture: container holds effectView and hostingView as SIBLINGS.
+        // The hostingView is masked with a CAShapeLayer to clip its opaque
+        // background at the corners. The effectView provides the material blur.
+        // Putting the hostingView as a child of effectView causes corner bleed.
 
+        let cr = Design.Launcher.cornerRadius
+
+        // Container — draws shadow
+        let containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.shadow = NSShadow()
+        containerView.layer?.shadowColor = NSColor.black.cgColor
+        containerView.layer?.shadowOpacity = 0.35
+        containerView.layer?.shadowRadius = 20
+        containerView.layer?.shadowOffset = CGSize(width: 0, height: -8)
+        containerView.layer?.cornerRadius = cr
+
+        // Effect view — material blur background
         let effectView = NSVisualEffectView()
         effectView.material = .hudWindow
         effectView.state = .active
         effectView.blendingMode = .behindWindow
         effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = Design.Launcher.cornerRadius
+        effectView.layer?.cornerRadius = cr
         effectView.layer?.masksToBounds = true
 
-        // Shadow on a wrapper (not clipped by masksToBounds)
-        let shadowView = NSView()
-        shadowView.wantsLayer = true
-        shadowView.shadow = NSShadow()
-        shadowView.layer?.shadowColor = NSColor.black.cgColor
-        shadowView.layer?.shadowOpacity = 0.35
-        shadowView.layer?.shadowRadius = 20
-        shadowView.layer?.shadowOffset = CGSize(width: 0, height: -8)
-        shadowView.layer?.cornerRadius = Design.Launcher.cornerRadius
+        // Hosting view — SwiftUI content, masked with CAShapeLayer
+        let hostingView = MaskedHostingView(rootView: launcherView, cornerRadius: cr)
 
-        // Hosting view — transparent, just the SwiftUI content
-        let hostingView = NSHostingView(rootView: launcherView)
-
-        // Stack: shadowView > effectView > hostingView
-        shadowView.addSubview(effectView)
-        effectView.addSubview(hostingView)
+        // Add as siblings: effectView behind, hostingView on top
+        containerView.addSubview(effectView)
+        containerView.addSubview(hostingView)
 
         for v in [effectView, hostingView] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                v.topAnchor.constraint(equalTo: containerView.topAnchor),
+                v.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+                v.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+                v.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            ])
         }
-        shadowView.translatesAutoresizingMaskIntoConstraints = false
 
-        NSLayoutConstraint.activate([
-            effectView.topAnchor.constraint(equalTo: shadowView.topAnchor),
-            effectView.bottomAnchor.constraint(equalTo: shadowView.bottomAnchor),
-            effectView.leadingAnchor.constraint(equalTo: shadowView.leadingAnchor),
-            effectView.trailingAnchor.constraint(equalTo: shadowView.trailingAnchor),
-
-            hostingView.topAnchor.constraint(equalTo: effectView.topAnchor),
-            hostingView.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
-            hostingView.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            hostingView.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-        ])
-
-        panel.contentView = shadowView
+        panel.contentView = containerView
         panel.makeKeyAndOrderFront(nil)
 
         if let screen = NSScreen.main {
